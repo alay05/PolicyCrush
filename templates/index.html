@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PolicyCrush Sources</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: auto; }
+    h1 { color: #b00; }
+    input, button { padding: 0.5rem; font-size: 1rem; margin-top: 0.5rem; }
+    .source { margin-top: 2rem; }
+    .article { margin-bottom: 1rem; }
+    .date { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>PolicyCrush Daily Source Aggregator</h1>
+
+  <form method="POST">
+    <label for="start_date">Start Date:</label><br>
+    <input type="date" name="start_date" id="start_date" value="{{ input_date }}">
+    <button type="submit" disabled>Get Articles</button>
+  </form>
+
+  {% if error %}
+    <p style="color: red;">{{ error }}</p>
+  {% endif %}
+
+  {% if articles %}
+    {% for source, data in articles.items() %}
+      <div class="source">
+        <h2>{{ source }} (<a href="{{ data.url }}" target="_blank">link</a>)</h2>
+        {% if data["items"] %}
+          {% for a in data["items"] %}
+            <div class="article">
+              <span class="date">{{ a.date }}</span> — 
+              <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p><em>No articles found.</em></p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <script>
+    const dateInput = document.getElementById("start_date");
+    const submitBtn = document.querySelector("button[type='submit']");
+
+    function toggleButton() {
+        submitBtn.disabled = !dateInput.value;
+    }
+
+    toggleButton();
+
+    dateInput.addEventListener("input", toggleButton);
+  </script>
+</body>
+</html>
