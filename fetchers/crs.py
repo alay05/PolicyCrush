@@ -1,44 +1,69 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from datetime import datetime
 
 def fetch_crs_articles(start_date=None):
-    results = []
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    url = f"https://web.archive.org/web/{timestamp}/https://www.congress.gov/crs-products"
+    options = webdriver.ChromeOptions()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-    response = requests.get(url)
-    if response.status_code != 200:
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    try:
+        url = "https://www.congress.gov/crs-products"
+        driver.get(url)  
+      
+        WebDriverWait(driver, 10).until(
+          EC.presence_of_element_located((By.CLASS_NAME, "column-equal"))
+        )
+        
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+
+        containers = soup.select("div.column-equal")
+
+        # Look for the one containing the 'Recent' header
+        recent_div = None
+        for div in containers:
+            if div.find("h2") and div.find("h2").text.strip() == "Recent":
+                recent_div = div
+                break
+
+        if not recent_div:
+            return []
+
+        p_tags = recent_div.find_all("p")
+
+        results = []
+
+        for i, p in enumerate(p_tags):
+            try:
+                link = p.find("a")
+                title = p.find("strong")
+                parts = list(p.stripped_strings)
+               
+                if not link or not title or len(parts) < 2:
+                    continue
+
+                date_text = parts[-1].strip()
+                pub_date = datetime.strptime(date_text, "%B %d, %Y")
+                if start_date and pub_date.date() < start_date:
+                    continue
+
+                results.append({
+                    "title": title.text.strip(),
+                    "url": "https://www.congress.gov" + link["href"],
+                    "date": pub_date.strftime("%Y-%m-%d")
+                })
+                
+            except Exception as e:
+              continue
+
         return results
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    crs_items = soup.select("div.column-equal p")
-
-    for p in crs_items:
-        try:
-            link = p.find("a")
-            title = p.find("strong")
-            text_parts = list(p.stripped_strings)
-            
-            if not link or not title or len(text_parts) < 2:
-                continue
-
-            date_text = text_parts[-1]
-            pub_date = datetime.strptime(date_text, "%B %d, %Y")
-            if start_date and pub_date.date() < start_date:
-                continue
-
-            raw_href = link["href"]
-            real_href = raw_href.split("/https://www.congress.gov")[-1]
-            full_url = "https://www.congress.gov" + real_href
-
-            results.append({
-                "title": title.text.strip(),
-                "url": full_url,
-                "date": pub_date.strftime("%Y-%m-%d")
-            })
-
-        except:
-            continue
-
-    return results
+    finally:
+        driver.quit()
