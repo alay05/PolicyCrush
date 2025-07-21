@@ -86,9 +86,7 @@
   </div>
 
   <form method="POST">
-    <label for="start_date">Start Date:</label>
-    <input type="date" name="start_date" id="start_date" value="{{ input_date }}">
-    <button type="submit" disabled>Get Articles</button>
+    <button type="submit">Get Unread Messages</button>
   </form>
 
   {% if error %}
@@ -96,19 +94,14 @@
   {% endif %}
 
   {% if articles %}
-    {% for source, data in articles.items() %}
+    {% for subject, data in articles.items() %}
       <div class="source">
-        <h2>{{ source }} (<a href="{{ data.url }}" target="_blank">link</a>)</h2>
-        {% if data["items"] %}
-          {% for a in data["items"] %}
-            <div class="article">
-              <span class="date">{{ a.date }}</span> — 
-              <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
-            </div>
-          {% endfor %}
-        {% else %}
-          <p><em>No articles found.</em></p>
-        {% endif %}
+        <h2>{{ subject }}</h2>
+        {% for a in data["items"] %}
+          <div class="article">
+            <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+          </div>
+        {% endfor %}
       </div>
     {% endfor %}
   {% endif %}

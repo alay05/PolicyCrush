@@ -6,6 +6,7 @@ from email.header import decode_header
 from email.utils import parseaddr
 from bs4 import BeautifulSoup
 from datetime import datetime
+import re
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -14,10 +15,34 @@ def authenticate():
     creds = flow.run_local_server(port=0)
     return build('gmail', 'v1', credentials=creds)
 
-def get_messages_after(service, query_date):
-    query = f"after:{query_date} is:unread"
+def get_messages(service):
+    query = f"is:unread"
     result = service.users().messages().list(userId='me', q=query).execute()
     return result.get('messages', [])
+
+def should_include_link(text, href):
+    text = text.strip()
+    href = href.strip().lower()
+
+    if not text or len(text) < 4:
+        return False
+
+    if len(text) > 50 and not re.search(r'[a-zA-Z]{3,}', text):
+        return False
+
+    blocked_text_keywords = [
+        "unsubscribe", "update profile", "manage preferences", "view in browser", "privacy"
+    ]
+    blocked_href_keywords = [
+        "govdelivery", "utm_", "track", "unsubscribe", "optout", "t.e2ma.net"
+    ]
+
+    if any(k in text.lower() for k in blocked_text_keywords):
+        return False
+    if any(k in href for k in blocked_href_keywords):
+        return False
+
+    return True
 
 def extract_links_from_email(service, msg_id):
     msg = service.users().messages().get(userId='me', id=msg_id, format='raw').execute()
@@ -41,35 +66,15 @@ def extract_links_from_email(service, msg_id):
     for part in mime_msg.walk():
         if part.get_content_type() == "text/html":
             soup = BeautifulSoup(part.get_payload(decode=True), "html.parser")
-            links = [(a.text.strip(), a['href']) for a in soup.find_all('a', href=True) if a.text.strip()]
+            for a in soup.find_all('a', href=True):
+                text = a.text.strip()
+                href = a['href']
+                # if not text:
+                #     text = a.get("title") or href.split("?")[0].split("/")[-1] or "Untitled Link"
+                # if should_include_link(text, href):
+                #  links.append({"title": text, "url": href})
+                if text:
+                  links.append({"title": text, "url": href})
             break
 
     return f"{sender_display} - {subject}", links
-
-
-
-BLUE = "\033[34m"
-CYAN = "\033[36m"
-BOLD = "\033[1m"
-RED = "\033[31m"
-RESET = "\033[0m"
-
-if __name__ == "__main__":
-    service = authenticate()
-    messages = get_messages_after(service, "2025/06/01")
-    print(f"{BOLD}Found {len(messages)} unread messages{RESET}\n")
-
-    for msg in messages:
-        subject, links = extract_links_from_email(service, msg['id'])
-
-        print(f"{BOLD}=== {subject} ==={RESET}")
-
-        if not links:
-            print(f"{RED}No links found in this email.{RESET}\n")
-            continue
-
-        for headline, url in links:
-            print(f"{CYAN}- {headline}{RESET}")
-            print(f"  {BLUE}{url}{RESET}\n")
-
-        print()

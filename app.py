@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request
-from fetchers.whitehouse import fetch_whitehouse_articles
-from fetchers.cms import fetch_cms_articles
-from fetchers.fda import fetch_fda_articles
-from fetchers.crs import fetch_crs_articles
-from fetchers.hhs import fetch_hhs_articles
-from fetchers.fed_reg import fetch_federal_register_articles
+from websites.whitehouse import fetch_whitehouse_articles
+from websites.cms import fetch_cms_articles
+from websites.fda import fetch_fda_articles
+from websites.crs import fetch_crs_articles
+from websites.hhs import fetch_hhs_articles
+from websites.fed_reg import fetch_federal_register_articles
+from gmail.messages import authenticate, get_messages, extract_links_from_email
 from datetime import datetime
 
 app = Flask(__name__)
@@ -54,6 +55,27 @@ def index():
             error = "Invalid date."
 
     return render_template("index.html", articles=articles, error=error, input_date=input_date)
+
+@app.route("/gmail", methods=["GET", "POST"])
+def gmail_view():
+    articles = None
+    error = None
+    input_date = ""
+
+    if request.method == "POST":
+        try:
+            service = authenticate()
+            messages = get_messages(service)
+            articles = {}
+
+            for msg in messages:
+                subject, links = extract_links_from_email(service, msg['id'])
+                if links:
+                    articles[subject] = {"items": links}
+        except Exception as e:
+            error = f"Error: {e}"
+
+    return render_template("gmail.html", articles=articles, error=error, input_date=input_date)
 
 if __name__ == "__main__":
     app.run(debug=True)
