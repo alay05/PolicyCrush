@@ -5,7 +5,8 @@ from websites.fda import fetch_fda_articles
 from websites.crs import fetch_crs_articles
 from websites.hhs import fetch_hhs_articles
 from websites.fed_reg import fetch_federal_register_articles
-from gmail.messages import authenticate, get_messages, extract_links_from_email
+# from websites.omb import fetch_omb_articles
+from gmail.messages import authenticate, get_messages, extract_html_from_email
 from datetime import datetime
 
 app = Flask(__name__)
@@ -24,6 +25,7 @@ def index():
             if input_date:
                 start_date = datetime.strptime(input_date, "%Y-%m-%d").date()
  
+            # website dictionaries 
             articles = {
                 "White House": {
                     "url": "https://www.whitehouse.gov/news/",
@@ -69,9 +71,9 @@ def gmail_view():
             articles = {}
 
             for msg in messages:
-                subject, links = extract_links_from_email(service, msg['id'])
-                if links:
-                    articles[subject] = {"items": links}
+                subject, html = extract_html_from_email(service, msg['id'])
+                if html:
+                    articles[subject] = {"html": html}
         except Exception as e:
             error = f"Error: {e}"
 

@@ -97,11 +97,10 @@
     {% for subject, data in articles.items() %}
       <div class="source">
         <h2>{{ subject }}</h2>
-        {% for a in data["items"] %}
-          <div class="article">
-            <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
-          </div>
-        {% endfor %}
+        <div class="article">
+          <iframe srcdoc='{{ data.get("html", "") | escape | safe }}'
+                  style="width: 100%; border: none; height: 600px;"></iframe>
+        </div>
       </div>
     {% endfor %}
   {% endif %}
