@@ -1,7 +1,7 @@
 # Use this file for testing article scrapers. Outputs article results to the terminal.
 
 from datetime import datetime
-from websites.cms import fetch_cms_articles
+from websites.senate.homeland import fetch_home_articles
 
 BLUE = "\033[36m"
 RED = "\033[31m"
@@ -19,12 +19,9 @@ def main():
             print("[ERROR] Invalid date format. Use YYYY-MM-DD.")
             return
 
-    # Header
     print(f"\n{RED}{BOLD}------------ HEADLINES SINCE {start_date} ------------{RESET}")
-
-    # White House
-    articles = fetch_cms_articles(start_date)
-    print(f"\n{BLUE}{BOLD}WHITE HOUSE (from www.whitehouse.gov/news):{RESET}")
+    articles = fetch_home_articles(start_date)
+    print(f"\n{BLUE}{BOLD}Articles:{RESET}")
     for a in articles:
         print(f"\n--> {a['date']} | {a['title']} | {a['url']}")
 
