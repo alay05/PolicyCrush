@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PolicyCrush News Dashboard</title>
+  <title>News Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body>
   <a href="/" class="home-button">← Home</a>
-  <h1>Daily News Check</h1>
+  <h1>Daily News</h1>
 
   <form method="POST">
     <label for="start_date">Earliest Date:</label>
@@ -31,7 +32,7 @@
         {% if data["items"] %}
           {% for a in data["items"] %}
             <div class="article">
-              <span class="date">{{ a.date or "No date" }}</span> — 
+              <span class="date">{{ a.date | pretty_date }}</span> - 
               <a href="{{ a.url }}" target="_blank">{{ a.title or "Untitled" }}</a>
             </div>
           {% endfor %}
@@ -41,7 +42,6 @@
       </div>
     {% endfor %}
   {% endif %}
-
   <script>
     const dateInput = document.getElementById("start_date");
     const submitBtn = document.querySelector("button[type='submit']");

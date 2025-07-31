@@ -40,15 +40,16 @@ h1 {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 25px;
+  gap: 45px;
   margin-bottom: 3rem;
+  margin-top: 1rem;
 }
 
 .nav-buttons a button {
   font-size: 1.1em;
-  padding: 15px 36px;
+  padding: 30px 80px;
   border: none;
-  border-radius: 9999px;
+  border-radius: 16px;
   background: linear-gradient(to right, #1f2937, #374151);
   color: #fff;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
@@ -58,7 +59,7 @@ h1 {
 
 .nav-buttons a button:hover {
   background: linear-gradient(to right, #374151, #4b5563);
-  transform: translateY(-3px);
+  transform: translateY(-6px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
@@ -117,6 +118,17 @@ button:hover:enabled {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.cancel-button {
+  background-color: #d62828;
+  color: white;
+  border: none;
+}
+
+.cancel-button:hover {
+  background-color: #a91f1f;
+  cursor: pointer;
 }
 
 .committee {
@@ -227,7 +239,6 @@ a:hover {
 
 .footer {
   text-align: center;
-  padding: 0.75rem 0;
 }
 
 .footer img {

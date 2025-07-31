@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PolicyCrush Gmail Dashboard</title>
+  <title>Gmail Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body>
   <a href="/" class="home-button">← Home</a>
@@ -16,7 +17,7 @@
     </form>
 
     <a href="{{ url_for('gmail.gmail_logout') }}" style="margin-left: 1rem; display: inline-block;">
-      <button type="button">Logout</button>
+      <button type="button" style="background-color: #d62828; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px;">Logout</button>
     </a>
   </div>
 

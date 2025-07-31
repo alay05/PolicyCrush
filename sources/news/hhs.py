@@ -15,7 +15,7 @@ def fetch_hhs_articles(start_date=None):
     options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
+     
     try:
         url = "https://www.hhs.gov/press-room/index.html"
         driver.get(url)

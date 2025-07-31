@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Senate Dashboard</title>
+  <title>House Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body>
   <a href="/" class="home-button">← Home</a>
-  <h1>Senate Committees</h1>
+  <h1>House Committees</h1>
 
   <form method="POST">
     <label for="start_date">Earliest Date:</label>
@@ -59,27 +59,15 @@
             {% endif %}
           </div>
         </div>
-
-        <div class="hearings-block">
-          <h3>Hearings</h3>
-          {% if data.hearing %}
-            <div class="columns" style="justify-content: center;">
-              <div class="column" style="flex: 1 1 70%;">
-                {% for h in data.hearing %}
-                  <div class="hearing">
-                    <span class="date">{{ h.date | pretty_date(true) }}</span> - 
-                    <a href="{{ h.url }}" target="_blank">{{ h.title }}</a>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          {% else %}
-            <p><em>No hearings found.</em></p>
-          {% endif %}
-        </div>
       </div>
     {% endfor %}
+    <footer class="footer" style="padding-top: 50px;">
+      <a href="https://www.chamberhill.com" target="_blank">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Chamber Hill Logo">
+      </a>
+    </footer>
   {% endif %}
+
   <script>
     const dateInput = document.getElementById("start_date");
     const submitBtn = document.getElementById("submit-btn");

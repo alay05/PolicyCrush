@@ -3,16 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PolicyCrush</title>
+  <title>PolicyCrush Sources</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body class="page-wrapper">
   <div class="content">
-    <h1>PolicyCrush Automation Dashboard</h1>
+    <h1>PolicyCrush Source Aggregation Dashboard</h1>
 
-    <div class="nav-buttons">
+    <h2 style="text-align: center; width: 500px;">News</h2>
+    <div class="nav-buttons" style="margin-bottom: 2rem;">
       <a href="/gmail"><button>Gmail</button></a>
-      <a href="/news"><button>News</button></a>
+      <a href="/news"><button>Daily</button></a>
+    </div>
+
+    <h2 style="text-align: center; width: 500px;">Committees</h2>
+    <div class="nav-buttons">
       <a href="/house"><button>House</button></a>
       <a href="/senate"><button>Senate</button></a>
     </div>
