@@ -20,4 +20,4 @@ htmlcov/
 *.sqlite3
 *.crdownload
 token.pickle
-scraper_test
+scraper_test.py
