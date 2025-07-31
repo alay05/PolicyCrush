@@ -68,7 +68,7 @@ def extract_html_from_email(service, msg_id):
     for part in mime_msg.walk():
         if part.get_content_type() == "text/html":
             html = part.get_payload(decode=True).decode(errors="replace")
-            return f"FROM: {sender_display} \n SUBJECT: {subject}", html
+            return f"FROM: {sender_display} - SUBJECT: {subject}", html
 
     # returns empty html if none present
     return f"FROM: {sender_display} \n SUBJECT: {subject}", ""

@@ -57,6 +57,7 @@
 
     form.addEventListener("submit", () => {
       loadingBar.style.display = "block";
+      document.querySelectorAll(".article, .source").forEach(el => el.remove());
     });
   </script>
 </body>

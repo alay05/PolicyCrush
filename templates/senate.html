@@ -95,6 +95,7 @@
 
     form.addEventListener("submit", () => {
       loadingBar.style.display = "block";
+      document.querySelectorAll(".committee").forEach(el => el.remove());
     });
   </script>
 </body>

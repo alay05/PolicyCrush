@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for
 from sources.messages import authenticate, logout, get_messages, extract_html_from_email
+import os
 
 gmail = Blueprint("gmail", __name__)
 
@@ -8,6 +9,7 @@ def gmail_view():
     articles = None
     error = None
     input_date = ""
+    token_exists = os.path.exists("token.pickle")
 
     if request.method == "POST":
         try:
@@ -22,7 +24,7 @@ def gmail_view():
         except Exception as e:
             error = f"Error: {e}"
 
-    return render_template("gmail.html", articles=articles, error=error, input_date=input_date)
+    return render_template("gmail.html", articles=articles, error=error, input_date=input_date, token_exists=token_exists)
 
 @gmail.route("/gmail/logout")
 def gmail_logout():

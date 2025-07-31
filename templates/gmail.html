@@ -17,7 +17,10 @@
     </form>
 
     <a href="{{ url_for('gmail.gmail_logout') }}" style="margin-left: 1rem; display: inline-block;">
-      <button type="button" style="background-color: #d62828; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px;">Logout</button>
+      <button type="button"
+              {% if not token_exists %}disabled style="opacity: 0.5; cursor: not-allowed; background-color: #aaa;"{% else %}style="background-color: #d62828; color: white;"{% endif %}>
+        Logout
+      </button>
     </a>
   </div>
 
@@ -31,7 +34,7 @@
 
   {% if articles %}
     {% for subject, data in articles.items() %}
-      <div class="committee">
+      <div class="email">
         <h2>{{ subject }}</h2>
         <div class="columns" style="justify-content: center;">
           <div class="column" style="flex: 1 1 90%;">
@@ -43,6 +46,8 @@
         </div>
       </div>
     {% endfor %}
+  {% elif not error and request.method == 'POST' %}
+    <p style="text-align: center;"><em>No unread emails.</em></p>
   {% endif %}
 
   <script>
@@ -51,6 +56,7 @@
 
     form.addEventListener("submit", () => {
       loadingBar.style.display = "block";
+      document.querySelectorAll(".email").forEach(el => el.remove());
     });
   </script>
 </body>

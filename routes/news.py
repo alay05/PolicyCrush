@@ -4,21 +4,25 @@ from datetime import datetime, timedelta
 from sources.news.cms_inov import fetch_cms_inov_articles
 from sources.news.cms import fetch_cms_articles
 from sources.news.crs import fetch_crs_articles
+from sources.news.congress import fetch_congress_articles
 from sources.news.fda import fetch_fda_articles
 from sources.news.fed_reg import fetch_federal_register_articles
 from sources.news.hhs import fetch_hhs_articles
 from sources.news.whitehouse import fetch_whitehouse_articles
+from sources.news.omb import fetch_omb_articles
 
 news = Blueprint("news", __name__)
 
 NEWS = {
-    "White House": fetch_whitehouse_articles,
     "CMS": fetch_cms_articles,
-    "FDA": fetch_fda_articles,
-    "CRS": fetch_crs_articles,
-    "HHS": fetch_hhs_articles,
-    "Federal Register Public Inspection Desk": fetch_federal_register_articles,
     "CMS Innovation Center": fetch_cms_inov_articles,
+    "CRS": fetch_crs_articles,
+    "Congress": fetch_congress_articles,
+    "FDA": fetch_fda_articles,
+    "Federal Register Public Inspection Desk": fetch_federal_register_articles,
+    "HHS": fetch_hhs_articles,
+    "OMB First Glance Rulemaking": fetch_omb_articles,
+    "White House": fetch_whitehouse_articles,
 }
 
 @news.route("/news", methods=["GET", "POST"])

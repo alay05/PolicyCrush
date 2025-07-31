@@ -28,7 +28,8 @@
   {% if committees %}
     {% for committee, data in committees.items() %}
       <div class="committee">
-        <h2><a href="{{ data.url }}" target="_blank">{{ committee }}</a></h2>
+        <!-- no link -->
+        <h2>{{ committee }}</h2> 
 
         <div class="columns">
           <div class="column">
@@ -61,11 +62,6 @@
         </div>
       </div>
     {% endfor %}
-    <footer class="footer" style="padding-top: 50px;">
-      <a href="https://www.chamberhill.com" target="_blank">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Chamber Hill Logo">
-      </a>
-    </footer>
   {% endif %}
 
   <script>
@@ -83,6 +79,7 @@
 
     form.addEventListener("submit", () => {
       loadingBar.style.display = "block";
+      document.querySelectorAll(".committee").forEach(el => el.remove());
     });
   </script>
 </body>

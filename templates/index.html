@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PolicyCrush Sources</title>
+  <title>PolicyCrush Production</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body class="page-wrapper">
   <div class="content">
-    <h1>PolicyCrush Source Aggregation Dashboard</h1>
+    <h1>PolicyCrush Production Dashboard</h1>
 
-    <h2 style="text-align: center; width: 500px;">News</h2>
-    <div class="nav-buttons" style="margin-bottom: 2rem;">
+    <h2 class="animate-in" style="animation-delay: 0.1s; text-align: center; width: 500px;">News</h2>
+    <div class="nav-buttons animate-in" style="animation-delay: 0.3s; margin-bottom: 2rem;">
       <a href="/gmail"><button>Gmail</button></a>
       <a href="/news"><button>Daily</button></a>
     </div>
 
-    <h2 style="text-align: center; width: 500px;">Committees</h2>
-    <div class="nav-buttons">
+    <h2 class="animate-in" style="animation-delay: 0.5s; text-align: center; width: 500px;">Committees</h2>
+    <div class="nav-buttons animate-in" style="animation-delay: 0.7s;">
       <a href="/house"><button>House</button></a>
       <a href="/senate"><button>Senate</button></a>
     </div>
   </div>
   
-  <footer class="footer">
+  <footer class="footer animate-in" style="animation-delay: 1.3s;">
     <a href="https://www.chamberhill.com" target="_blank">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="Chamber Hill Logo">
     </a>
