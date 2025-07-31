@@ -1,7 +1,7 @@
 # Use this file for testing article scrapers. Outputs article results to the terminal.
 
 from datetime import datetime
-from websites.senate.veterans import fetch_vet_articles
+from sources.senate.veterans import fetch_vet_articles
 
 BLUE = "\033[36m"
 RED = "\033[31m"
