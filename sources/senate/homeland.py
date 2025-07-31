@@ -6,7 +6,7 @@ def fetch_home_articles(start_date=None):
     base_url = "https://www.hsgac.senate.gov"
     results = []
 
-    def parse_news(url):
+    def parse_news(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
@@ -45,7 +45,8 @@ def fetch_home_articles(start_date=None):
             items.append({
                 "title": title,
                 "url": url,
-                "date": pub_date.date(),
+                "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -90,16 +91,17 @@ def fetch_home_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": dt,
+                "tag": "hearing",
             })
 
         return items
 
 
-    # Majority News
-    results += parse_news("https://www.hsgac.senate.gov/media/majority-news/")
-    # Minority News
-    results += parse_news("https://www.hsgac.senate.gov/media/minority-news/")
-    # Hearings
+    results += parse_news("https://www.hsgac.senate.gov/media/majority-news/", "majority")
+    results += parse_news("https://www.hsgac.senate.gov/media/minority-news/", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

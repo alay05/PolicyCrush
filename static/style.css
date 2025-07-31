@@ -1,0 +1,139 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap");
+
+* {
+  font-family: 'Manrope', sans-serif;
+}
+
+body {
+  background-color: #f4f6f8;
+  padding: 2rem 1rem;
+  max-width: 1000px;
+  margin: auto;
+  line-height: 1.6;
+  font-size: 16px;
+  color: #222;
+}
+
+h1 {
+  color: #b00;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 2.2rem;
+}
+
+.nav-buttons {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 25px;
+}
+
+.nav-buttons a button {
+  font-size: 1.1em;
+  padding: 13px 30px;
+  border: none;
+  border-radius: 20px;
+  background-color: #1f2937; 
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.nav-buttons a button:hover {
+  background-color: #374151; 
+  transform: translateY(-3px);
+}
+
+form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+input[type="date"], button {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #aaa;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover:enabled {
+  background-color: #eee;
+  transform: scale(1.05);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.committee {
+  margin-top: 2.5rem;
+}
+
+.committee h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 0.25rem;
+}
+
+.columns {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.column {
+  flex: 1 1 45%;
+}
+
+.column h3, .hearings-block h3 {
+  font-size: 1.2rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+  color: #333;
+  padding-bottom: 0.25rem;
+}
+
+.article, .hearing {
+  background-color: #fff;
+  border-left: 4px solid #b00;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.date {
+  font-weight: bold;
+  color: #b00;
+}
+
+a {
+  text-decoration: none;
+  color: #0645ad;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: #0077cc;
+}
+
+.hearings-block {
+  width: 100%;
+  text-align: center;
+}

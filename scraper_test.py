@@ -1,7 +1,7 @@
 # Use this file for testing article scrapers. Outputs article results to the terminal.
 
 from datetime import datetime
-from websites.senate.homeland import fetch_home_articles
+from websites.senate.veterans import fetch_vet_articles
 
 BLUE = "\033[36m"
 RED = "\033[31m"
@@ -20,10 +20,11 @@ def main():
             return
 
     print(f"\n{RED}{BOLD}------------ HEADLINES SINCE {start_date} ------------{RESET}")
-    articles = fetch_home_articles(start_date)
+    articles = fetch_vet_articles(start_date)
     print(f"\n{BLUE}{BOLD}Articles:{RESET}")
     for a in articles:
-        print(f"\n--> {a['date']} | {a['title']} | {a['url']}")
+        print(f"\n--> {a['date']} | {a['title']} | {a['url']} \n{BOLD}{a['tag']}{RESET}")
+        # print(f"\n--> {a['date']} | {a['title']} | {a['url']}")
 
 
     print(f"\n{BOLD}{RED}DONE")

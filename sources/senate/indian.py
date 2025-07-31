@@ -6,7 +6,7 @@ def fetch_ind_articles(start_date=None):
     base_url = "https://www.indian.senate.gov"
     results = []
 
-    def parse_section(url):
+    def parse_section(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
@@ -39,6 +39,7 @@ def fetch_ind_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -79,16 +80,17 @@ def fetch_ind_articles(start_date=None):
             items.append({
                 "title": title,
                 "url": url,
-                "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "date": pub_date,
+                "tag": "hearing",
             })
 
         return items
-
-    # Democratic News
-    results += parse_section(base_url + "/newsroom/democratic-news")
-    # Republican News
-    results += parse_section(base_url + "/newsroom/republican-news")
-    # Hearings
+    
+    results += parse_section(base_url + "/newsroom/republican-news", "majority")
+    results += parse_section(base_url + "/newsroom/democratic-news", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

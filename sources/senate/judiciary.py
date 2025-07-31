@@ -3,11 +3,11 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-def fetch_judiciary_articles(start_date=None):
+def fetch_jud_articles(start_date=None):
     base_url = "https://www.judiciary.senate.gov"
     results = []
 
-    def parse_news(url):
+    def parse_news(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
@@ -38,6 +38,7 @@ def fetch_judiciary_articles(start_date=None):
                 "title": title_tag.get_text(strip=True),
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -74,16 +75,17 @@ def fetch_judiciary_articles(start_date=None):
             items.append({
                 "title": title_tag.get_text(strip=True),
                 "url": url,
-                "date": pub_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "date": pub_date,
+                "tag": "hearing",
             })
 
         return items
 
-    # Majority Press
-    results += parse_news("https://www.judiciary.senate.gov/press/majority?expanded=true")
-    # Minority Press
-    results += parse_news("https://www.judiciary.senate.gov/press/minority?expanded=true")
-    # Hearings
+    results += parse_news("https://www.judiciary.senate.gov/press/majority?expanded=true", "majority")
+    results += parse_news("https://www.judiciary.senate.gov/press/minority?expanded=true", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PolicyCrush Senate Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Senate Committees</h1>
+
+  <form method="POST">
+    <label for="start_date">Start Date:</label>
+    <input type="date" name="start_date" id="start_date" value="{{ input_date }}">
+    <button type="submit" id="submit-btn" disabled>Get Articles</button>
+  </form>
+
+  {% if error %}
+    <p style="color: red;">{{ error }}</p>
+  {% endif %}
+
+  {% if committees %}
+    {% for committee, data in committees.items() %}
+      <div class="committee">
+        <h2>{{ committee }} (<a href="{{ data.url }}" target="_blank">link</a>)</h2>
+
+        <div class="columns">
+          <div class="column">
+            <h3>Majority Press</h3>
+            {% if data.majority %}
+              {% for a in data.majority %}
+                <div class="article">
+                  <span class="date">{{ a.date }}</span> — 
+                  <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p><em>No majority articles.</em></p>
+            {% endif %}
+          </div>
+
+          <div class="column">
+            <h3>Minority Press</h3>
+            {% if data.minority %}
+              {% for a in data.minority %}
+                <div class="article">
+                  <span class="date">{{ a.date }}</span> — 
+                  <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p><em>No minority articles.</em></p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="hearings-block">
+          <h3>Hearings</h3>
+          {% if data.hearing %}
+            <div class="columns" style="justify-content: center;">
+              <div class="column" style="flex: 1 1 70%;">
+                {% for h in data.hearing %}
+                  <div class="hearing">
+                    <span class="date">{{ h.date.strftime("%Y-%m-%d %I:%M %p") }}</span> —
+                    <a href="{{ h.url }}" target="_blank">{{ h.title }}</a>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% else %}
+            <p><em>No hearings found.</em></p>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+  <script>
+    const dateInput = document.getElementById("start_date");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function toggleSubmit() {
+      submitBtn.disabled = !dateInput.value;
+    }
+
+    toggleSubmit(); 
+    dateInput.addEventListener("input", toggleSubmit);
+  </script>
+</body>
+</html>

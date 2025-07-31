@@ -6,7 +6,7 @@ def fetch_fin_articles(start_date=None):
     base_url = "https://www.finance.senate.gov"
     results = []
 
-    def parse_news(url):
+    def parse_news(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
@@ -38,6 +38,7 @@ def fetch_fin_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -74,16 +75,17 @@ def fetch_fin_articles(start_date=None):
             items.append({
                 "title": title,
                 "url": url,
-                "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "date": pub_date,
+                "tag": "hearing",
             })
 
         return items
 
-    # Chairman's News
-    results += parse_news("https://www.finance.senate.gov/chairmans-news")
-    # Ranking Member's News
-    results += parse_news("https://www.finance.senate.gov/ranking-members-news")
-    # Hearings
+    results += parse_news("https://www.finance.senate.gov/chairmans-news", "majority")
+    results += parse_news("https://www.finance.senate.gov/ranking-members-news", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

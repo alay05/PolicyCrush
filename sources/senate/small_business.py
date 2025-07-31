@@ -1,29 +1,29 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from dateutil import parser
 
-def fetch_budg_articles(start_date=None):
-    base_url = "https://www.budget.senate.gov"
+def fetch_smb_articles(start_date=None):
+    base_url = "https://www.sbc.senate.gov"
     results = []
 
-    def parse_press(url):
+    def parse_news(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
+
         soup = BeautifulSoup(response.text, "html.parser")
-        rows = soup.select("table#browser_table tr")
+        rows = soup.select("table.table.recordList tbody tr")
         items = []
 
         for row in rows:
-            date_tag = row.select_one("td.date time")
-            link_tag = row.select_one("td a")
+            date_tag = row.select_one("td.recordListDate")
+            link_tag = row.select_one("td.recordListTitle a")
 
             if not date_tag or not link_tag:
                 continue
 
             try:
-                pub_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%d")
+                pub_date = datetime.strptime(date_tag.get_text(strip=True), "%m/%d/%y")
             except ValueError:
                 continue
 
@@ -39,52 +39,60 @@ def fetch_budg_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
 
     def parse_hearings():
-        url = base_url + "/hearings"
+        url = "https://www.sbc.senate.gov/public/index.cfm/hearings"
         response = requests.get(url)
         if response.status_code != 200:
             return []
+
         soup = BeautifulSoup(response.text, "html.parser")
-        rows = soup.select("tr.vevent")
+        rows = soup.select("table.table.recordList tbody tr")
         items = []
 
         for row in rows:
-            title_tag = row.select_one("a.url.summary")
-            date_tag = row.select_one("time.dtstart")
+            date_tag = row.select_one("td.recordListDate")
+            time_tag = row.select_one("td.recordListTime")
+            link_tag = row.select_one("td.recordListTitle a")
 
-            if not title_tag or not date_tag:
+            if not date_tag or not link_tag:
                 continue
 
+            date_str = date_tag.get_text(strip=True)
+            time_str = time_tag.get_text(strip=True) if time_tag else "12:00 AM"
+            dt_str = f"{date_str} {time_str}"
+
             try:
-                pub_date = parser.isoparse(date_tag["datetime"])
+                pub_date = datetime.strptime(dt_str, "%m/%d/%y %I:%M %p")
             except ValueError:
                 continue
 
             if start_date and pub_date.date() < start_date:
                 continue
 
-            title = title_tag.get_text(strip=True)
-            url = title_tag["href"].strip()
+            title = link_tag.get_text(strip=True)
+            url = link_tag["href"].strip()
             if not url.startswith("http"):
                 url = base_url + url
 
             items.append({
                 "title": title,
                 "url": url,
-                "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "date": pub_date,
+                "tag": "hearing",
             })
 
         return items
 
-    # Chairman's Press
-    results += parse_press("https://www.budget.senate.gov/chairman/newsroom/press/table/")
-    # Ranking Member Press
-    results += parse_press("https://www.budget.senate.gov/ranking-member/newsroom/press/table/")
-    # Hearings
+    results += parse_news("https://www.sbc.senate.gov/public/index.cfm/republicanpressreleases", "majority")
+    results += parse_news("https://www.sbc.senate.gov/public/index.cfm/democraticpressreleases", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

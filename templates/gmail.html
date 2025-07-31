@@ -2,119 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PolicyCrush Sources</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', 'Inter', sans-serif;
-      background-color: #e5e5e5;
-      padding: 2rem 1rem;
-      max-width: 800px;
-      margin: auto;
-      line-height: 1.6;
-      font-size: 16px;
-    }
-
-    h1 {
-      color: #b00;
-      text-align: center;
-      margin-bottom: 2rem;
-      font-size: 2rem;
-    }
-
-    form {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 2rem;
-    }
-
-    input, button {
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-
-    button:disabled {
-      background-color: #eee;
-      color: #999;
-    }
-
-    .source {
-      margin-top: 2rem;
-    }
-
-    .source h2 {
-      font-size: 1.4rem;
-      color: #333;
-      border-bottom: 2px solid #ddd;
-      padding-bottom: 0.25rem;
-    }
-
-    .article {
-      background-color: #f9f9f9;
-      border-left: 4px solid #b00;
-      padding: 0.75rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-
-    .date {
-      font-weight: bold;
-    }
-
-    a {
-      text-decoration: none;
-      color: #0645ad;
-    }
-
-    a:hover {
-      text-decoration: underline;
-      color: #0077cc;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PolicyCrush Gmail Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h1>PolicyCrush Daily Source Aggregator</h1>
+  <h1>Gmail Newsletters</h1>
 
-  <div style="text-align: center; margin-bottom: 1.5rem;">
-    <a href="/" style="margin-right: 1rem;">Web Sources</a>
-    <a href="/gmail">Gmail Newsletters</a>
-  </div>
-
-  <form method="POST">
+  <form method="POST" style="margin-top: 2rem; text-align: center;">
     <button type="submit">Get Unread Messages</button>
   </form>
 
   {% if error %}
-    <p style="color: red;">{{ error }}</p>
+    <p style="color: red; text-align: center;">{{ error }}</p>
   {% endif %}
 
   {% if articles %}
     {% for subject, data in articles.items() %}
-      <div class="source">
+      <div class="committee">
         <h2>{{ subject }}</h2>
-        <div class="article">
-          <iframe srcdoc='{{ data.get("html", "") | escape | safe }}'
-                  style="width: 100%; border: none; height: 600px;"></iframe>
+        <div class="columns" style="justify-content: center;">
+          <div class="column" style="flex: 1 1 90%;">
+            <div class="article">
+              <iframe srcdoc='{{ data.get("html", "") | escape | safe }}'
+                      style="width: 100%; height: 600px; border: none;"></iframe>
+            </div>
+          </div>
         </div>
       </div>
     {% endfor %}
   {% endif %}
-
-  <script>
-    const dateInput = document.getElementById("start_date");
-    const submitBtn = document.querySelector("button[type='submit']");
-
-    function toggleButton() {
-        submitBtn.disabled = !dateInput.value;
-    }
-
-    toggleButton();
-    dateInput.addEventListener("input", toggleButton);
-  </script>
 </body>
 </html>

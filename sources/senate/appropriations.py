@@ -2,27 +2,27 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 
-def fetch_help_articles(start_date=None):
-    base_url = "https://www.help.senate.gov"
+def fetch_appr_articles(start_date=None):
+    base_url = "https://www.appropriations.senate.gov"
     results = []
 
-    def parse_press(url):
+    def parse_news(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
         soup = BeautifulSoup(response.text, "html.parser")
-        rows = soup.select("div.PressBrowser__itemRow")
+        rows = soup.select("table.table tbody tr")
         items = []
 
         for row in rows:
-            date_tag = row.select_one("div.PressBrowser__date time")
-            link_tag = row.select_one("div.col-12.col-md a")
+            date_tag = row.select_one("td.date time")
+            link_tag = row.select_one("td a")
 
             if not date_tag or not link_tag:
                 continue
 
             try:
-                pub_date = datetime.strptime(date_tag["datetime"], "%B %d, %Y")
+                pub_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%d")
             except ValueError:
                 continue
 
@@ -38,6 +38,7 @@ def fetch_help_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -48,31 +49,18 @@ def fetch_help_articles(start_date=None):
         if response.status_code != 200:
             return []
         soup = BeautifulSoup(response.text, "html.parser")
-        rows = soup.select("div.LegislationList__item")
+        rows = soup.select("tr.vevent")
         items = []
 
         for row in rows:
-            title_tag = row.select_one("a.LegislationList__link")
-            date_tag = row.select_one("div.LegislationList__dateCol time")
+            title_tag = row.select_one("a.url.summary")
+            date_tag = row.select_one("time.dtstart")
 
             if not title_tag or not date_tag:
                 continue
 
             try:
-                date_str = date_tag["datetime"].strip()
-                full_text = date_tag.get_text(separator="\n", strip=True)
-                time_str = None
-                for line in full_text.split("\n"):
-                    if ":" in line and ("am" in line.lower() or "pm" in line.lower()):
-                        time_str = line.strip()
-                        break
-
-                if time_str:
-                    datetime_str = f"{date_str} {time_str}"
-                    pub_date = datetime.strptime(datetime_str, "%B %d, %Y %I:%M%p")
-                else:
-                    pub_date = datetime.strptime(date_str, "%B %d, %Y")
-
+                pub_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%dT%H:%M")
             except ValueError:
                 continue
 
@@ -88,15 +76,16 @@ def fetch_help_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date,
+                "tag": "hearing",
             })
 
         return items
-    
-    # Chairman's News
-    results += parse_press("https://www.help.senate.gov/chair/newsroom/press?expanded=false")
-    # Ranking Member's News
-    results += parse_press("https://www.help.senate.gov/ranking/newsroom/press?expanded=false")
-    # Hearings
+
+    results += parse_news("https://www.appropriations.senate.gov/news/majority/table", "majority")
+    results += parse_news("https://www.appropriations.senate.gov/news/minority/table", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

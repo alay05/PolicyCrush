@@ -1,17 +1,18 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from dateutil import parser
 
-def fetch_appr_articles(start_date=None):
-    base_url = "https://www.appropriations.senate.gov"
+def fetch_budg_articles(start_date=None):
+    base_url = "https://www.budget.senate.gov"
     results = []
 
-    def parse_news(url):
+    def parse_press(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
         soup = BeautifulSoup(response.text, "html.parser")
-        rows = soup.select("table.table tbody tr")
+        rows = soup.select("table#browser_table tr")
         items = []
 
         for row in rows:
@@ -38,6 +39,7 @@ def fetch_appr_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -59,7 +61,7 @@ def fetch_appr_articles(start_date=None):
                 continue
 
             try:
-                pub_date = datetime.strptime(date_tag["datetime"], "%Y-%m-%dT%H:%M")
+                pub_date = parser.isoparse(date_tag["datetime"])
             except ValueError:
                 continue
 
@@ -75,15 +77,16 @@ def fetch_appr_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date,
+                "tag": "hearing",
             })
 
         return items
 
-    # Majority News
-    results += parse_news("https://www.appropriations.senate.gov/news/majority/table")
-    # Minority News
-    results += parse_news("https://www.appropriations.senate.gov/news/minority/table")
-    # Hearings
+    results += parse_press("https://www.budget.senate.gov/chairman/newsroom/press/table/", "majority")
+    results += parse_press("https://www.budget.senate.gov/ranking-member/newsroom/press/table/", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }

@@ -9,7 +9,7 @@ def fetch_age_articles(start_date=None):
     def contains_accented_chars(text):
         return any(char in text for char in "áéíóúñÁÉÍÓÚÑ")
 
-    def parse_news(url):
+    def parse_news(url, tag):
         response = requests.get(url)
         if response.status_code != 200:
             return []
@@ -49,6 +49,7 @@ def fetch_age_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": pub_date.date() if pub_date.time().isoformat() == "00:00:00" else pub_date,
+                "tag": tag,
             })
 
         return items
@@ -94,12 +95,16 @@ def fetch_age_articles(start_date=None):
                 "title": title,
                 "url": url,
                 "date": dt,
+                "tag": "hearing",
             })
 
         return items
 
-    results += parse_news(base_url + "/press-room/majority?expanded=false")
-    results += parse_news(base_url + "/press-room/minority?expanded=false")
+    results += parse_news(base_url + "/press-room/majority?expanded=false", "majority")
+    results += parse_news(base_url + "/press-room/minority?expanded=false", "minority")
     results += parse_hearings()
 
-    return results
+    return {
+        "base_url": base_url,
+        "articles": results,
+    }
