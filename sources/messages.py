@@ -1,17 +1,43 @@
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
+import os
+import pickle
 import base64
 import email
 from email.header import decode_header
 from email.utils import parseaddr
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-# Authenticates Gmail User
+# log in - stays logged in with token.pickle
 def authenticate():
-    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = None
+
+    # load credentials if they exist
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+
+    # if no valid, prompt new login
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # save
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
     return build('gmail', 'v1', credentials=creds)
+
+# log out
+def logout():
+    if os.path.exists('token.pickle'):
+        os.remove('token.pickle')
+        return True
+    return False
 
 # Pulls unread messages
 def get_messages(service):

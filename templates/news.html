@@ -7,13 +7,18 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <a href="/" class="home-button">← Home</a>
   <h1>Daily News Check</h1>
 
   <form method="POST">
-    <label for="start_date">Start Date:</label>
+    <label for="start_date">Earliest Date:</label>
     <input type="date" name="start_date" id="start_date" value="{{ input_date }}">
     <button type="submit" id="submit-btn" disabled>Get Articles</button>
   </form>
+
+  <div id="loading-bar-container">
+    <div class="loading-bar"></div>
+  </div>
 
   {% if error %}
     <p style="color: red;">{{ error }}</p>
@@ -22,12 +27,12 @@
   {% if articles %}
     {% for source, data in articles.items() %}
       <div class="source">
-        <h2>{{ source }} (<a href="{{ data.url }}" target="_blank">link</a>)</h2>
+        <h2><a href="{{ data['url'] }}" target="_blank">{{ source }}</a></h2>
         {% if data["items"] %}
           {% for a in data["items"] %}
             <div class="article">
-              <span class="date">{{ a.date }}</span> — 
-              <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+              <span class="date">{{ a.date or "No date" }}</span> — 
+              <a href="{{ a.url }}" target="_blank">{{ a.title or "Untitled" }}</a>
             </div>
           {% endfor %}
         {% else %}
@@ -40,6 +45,8 @@
   <script>
     const dateInput = document.getElementById("start_date");
     const submitBtn = document.querySelector("button[type='submit']");
+    const form = document.querySelector("form");
+    const loadingBar = document.getElementById("loading-bar-container");
 
     function toggleButton() {
         submitBtn.disabled = !dateInput.value;
@@ -47,6 +54,10 @@
 
     toggleButton();
     dateInput.addEventListener("input", toggleButton);
+
+    form.addEventListener("submit", () => {
+      loadingBar.style.display = "block";
+    });
   </script>
 </body>
 </html>

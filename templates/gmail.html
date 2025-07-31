@@ -7,11 +7,22 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <a href="/" class="home-button">← Home</a>
   <h1>Gmail Newsletters</h1>
 
-  <form method="POST" style="margin-top: 2rem; text-align: center;">
-    <button type="submit">Get Unread Messages</button>
-  </form>
+  <div style="margin-top: 2rem; text-align: center;">
+    <form method="POST" id="gmail-form" style="display: inline-block;">
+      <button type="submit">Get Unread Messages</button>
+    </form>
+
+    <a href="{{ url_for('gmail.gmail_logout') }}" style="margin-left: 1rem; display: inline-block;">
+      <button type="button">Logout</button>
+    </a>
+  </div>
+
+  <div id="loading-bar-container">
+    <div class="loading-bar"></div>
+  </div>
 
   {% if error %}
     <p style="color: red; text-align: center;">{{ error }}</p>
@@ -32,5 +43,14 @@
       </div>
     {% endfor %}
   {% endif %}
+
+  <script>
+    const form = document.getElementById("gmail-form");
+    const loadingBar = document.getElementById("loading-bar-container");
+
+    form.addEventListener("submit", () => {
+      loadingBar.style.display = "block";
+    });
+  </script>
 </body>
 </html>

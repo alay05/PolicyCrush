@@ -7,13 +7,18 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <a href="/" class="home-button">← Home</a>
   <h1>Senate Committees</h1>
 
   <form method="POST">
-    <label for="start_date">Start Date:</label>
+    <label for="start_date">Earliest Date:</label>
     <input type="date" name="start_date" id="start_date" value="{{ input_date }}">
     <button type="submit" id="submit-btn" disabled>Get Articles</button>
   </form>
+
+  <div id="loading-bar-container">
+    <div class="loading-bar"></div>
+  </div>
 
   {% if error %}
     <p style="color: red;">{{ error }}</p>
@@ -22,7 +27,7 @@
   {% if committees %}
     {% for committee, data in committees.items() %}
       <div class="committee">
-        <h2>{{ committee }} (<a href="{{ data.url }}" target="_blank">link</a>)</h2>
+        <h2><a href="{{ data.url }}" target="_blank">{{ committee }}</a></h2>
 
         <div class="columns">
           <div class="column">
@@ -30,7 +35,7 @@
             {% if data.majority %}
               {% for a in data.majority %}
                 <div class="article">
-                  <span class="date">{{ a.date }}</span> — 
+                  <span class="date">{{ a.date | pretty_date }}</span>
                   <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
                 </div>
               {% endfor %}
@@ -44,7 +49,7 @@
             {% if data.minority %}
               {% for a in data.minority %}
                 <div class="article">
-                  <span class="date">{{ a.date }}</span> — 
+                  <span class="date">{{ a.date | pretty_date }}</span>
                   <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
                 </div>
               {% endfor %}
@@ -61,7 +66,7 @@
               <div class="column" style="flex: 1 1 70%;">
                 {% for h in data.hearing %}
                   <div class="hearing">
-                    <span class="date">{{ h.date.strftime("%Y-%m-%d %I:%M %p") }}</span> —
+                    <span class="date">{{ h.date | pretty_date(true) }}</span>
                     <a href="{{ h.url }}" target="_blank">{{ h.title }}</a>
                   </div>
                 {% endfor %}
@@ -77,13 +82,19 @@
   <script>
     const dateInput = document.getElementById("start_date");
     const submitBtn = document.getElementById("submit-btn");
+    const form = document.querySelector("form");
+    const loadingBar = document.getElementById("loading-bar-container");
 
     function toggleSubmit() {
       submitBtn.disabled = !dateInput.value;
     }
 
-    toggleSubmit(); 
+    toggleSubmit();
     dateInput.addEventListener("input", toggleSubmit);
+
+    form.addEventListener("submit", () => {
+      loadingBar.style.display = "block";
+    });
   </script>
 </body>
 </html>

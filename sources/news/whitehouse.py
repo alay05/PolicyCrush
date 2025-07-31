@@ -43,4 +43,7 @@ def fetch_whitehouse_articles(start_date=None):
 
         page += 1
 
-    return results
+    return {
+        "url": url,
+        "articles": results,
+    }

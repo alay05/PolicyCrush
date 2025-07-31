@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request
-from sources.messages import authenticate, get_messages, extract_html_from_email
+from flask import Blueprint, render_template, request, redirect, url_for
+from sources.messages import authenticate, logout, get_messages, extract_html_from_email
 
 gmail = Blueprint("gmail", __name__)
 
@@ -23,3 +23,8 @@ def gmail_view():
             error = f"Error: {e}"
 
     return render_template("gmail.html", articles=articles, error=error, input_date=input_date)
+
+@gmail.route("/gmail/logout")
+def gmail_logout():
+    logout()
+    return redirect(url_for("gmail.gmail_view"))

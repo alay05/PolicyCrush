@@ -40,7 +40,7 @@ def fetch_crs_articles(start_date=None):
 
         results = []
 
-        for i, p in enumerate(p_tags):
+        for p in p_tags:
             try:
                 link = p.find("a")
                 title = p.find("strong")
@@ -63,7 +63,10 @@ def fetch_crs_articles(start_date=None):
             except Exception as e:
               continue
 
-        return results
+        return {
+            "url": url,
+            "articles": results,
+        }
 
     finally:
         driver.quit()

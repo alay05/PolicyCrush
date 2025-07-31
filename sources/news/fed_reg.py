@@ -4,6 +4,7 @@ from datetime import datetime
 
 def fetch_federal_register_articles(start_date=None):
     results = []
+    public_url = "https://www.federalregister.gov/public-inspection/"
     url = "https://www.federalregister.gov/public-inspection/search?conditions%5Bagencies%5D%5B%5D=agency-for-healthcare-research-and-quality&conditions%5Bagencies%5D%5B%5D=centers-for-medicare-medicaid-services&conditions%5Bagencies%5D%5B%5D=children-and-families-administration&conditions%5Bagencies%5D%5B%5D=defense-department&conditions%5Bagencies%5D%5B%5D=drug-enforcement-administration&conditions%5Bagencies%5D%5B%5D=employment-standards-administration&conditions%5Bagencies%5D%5B%5D=food-and-drug-administration&conditions%5Bagencies%5D%5B%5D=health-and-human-services-department&conditions%5Bagencies%5D%5B%5D=health-resources-and-services-administration&conditions%5Bagencies%5D%5B%5D=internal-revenue-service&conditions%5Bagencies%5D%5B%5D=justice-department&conditions%5Bagencies%5D%5B%5D=national-institutes-of-health&conditions%5Bagencies%5D%5B%5D=occupational-safety-and-health-administration&conditions%5Bagencies%5D%5B%5D=substance-abuse-and-mental-health-services-administration&conditions%5Bagencies%5D%5B%5D=treasury-department&conditions%5Bagencies%5D%5B%5D=centers-for-disease-control-and-prevention"
 
     response = requests.get(url, headers={
@@ -49,4 +50,7 @@ def fetch_federal_register_articles(start_date=None):
         except Exception as e:
             continue
 
-    return results
+    return {
+        "url": public_url,
+        "articles": results,
+    }

@@ -6,13 +6,22 @@
   <title>PolicyCrush</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-  <h1>PolicyCrush Automation Dashboard</h1>
-  <div class="nav-buttons">
-    <a href="/gmail"><button>Gmail</button></a>
-    <a href="/news"><button>News</button></a>
-    <a href="/house"><button>House</button></a>
-    <a href="/senate"><button>Senate</button></a>
+<body class="page-wrapper">
+  <div class="content">
+    <h1>PolicyCrush Automation Dashboard</h1>
+
+    <div class="nav-buttons">
+      <a href="/gmail"><button>Gmail</button></a>
+      <a href="/news"><button>News</button></a>
+      <a href="/house"><button>House</button></a>
+      <a href="/senate"><button>Senate</button></a>
+    </div>
   </div>
+  
+  <footer class="footer">
+    <a href="https://www.chamberhill.com" target="_blank">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Chamber Hill Logo">
+    </a>
+  </footer>
 </body>
 </html>

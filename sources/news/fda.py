@@ -37,4 +37,7 @@ def fetch_fda_articles(start_date=None):
             "date": pub_date.strftime("%Y-%m-%d")
         })
 
-    return results
+    return {
+        "url": url,
+        "articles": results,
+    }

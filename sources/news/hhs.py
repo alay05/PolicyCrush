@@ -57,7 +57,10 @@ def fetch_hhs_articles(start_date=None):
             except Exception as e:
                 continue
 
-        return results
+        return {
+            "url": url,
+            "articles": results,
+        }
 
     finally:
         driver.quit()

@@ -1,12 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap");
 
 * {
+  box-sizing: border-box;
   font-family: 'Manrope', sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   background-color: #f4f6f8;
-  padding: 2rem 1rem;
+  padding: 3rem 1.5rem;
   max-width: 1000px;
   margin: auto;
   line-height: 1.6;
@@ -15,10 +18,22 @@ body {
 }
 
 h1 {
-  color: #b00;
+  color: #d62828;
   text-align: center;
   margin-bottom: 2rem;
-  font-size: 2.2rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+}
+
+.subtitle {
+  text-align: center;
+  color: #555;
+  font-size: 1.2rem;
+  margin-top: -0.5rem;
+  margin-bottom: 2.5rem;
+  opacity: 0.85;
 }
 
 .nav-buttons {
@@ -26,23 +41,48 @@ h1 {
   justify-content: center;
   flex-wrap: wrap;
   gap: 25px;
+  margin-bottom: 3rem;
 }
 
 .nav-buttons a button {
   font-size: 1.1em;
-  padding: 13px 30px;
+  padding: 15px 36px;
   border: none;
-  border-radius: 20px;
-  background-color: #1f2937; 
+  border-radius: 9999px;
+  background: linear-gradient(to right, #1f2937, #374151);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.25s ease-in-out;
 }
 
 .nav-buttons a button:hover {
-  background-color: #374151; 
+  background: linear-gradient(to right, #374151, #4b5563);
   transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.home-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 999;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(to right, #1f2937, #374151);
+  padding: 8px 16px;
+  border-radius: 10px;
+  text-decoration: none !important;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s ease-in-out;
+}
+
+.home-button:hover {
+  background: linear-gradient(to right, #374151, #4b5563);
+  transform: translateY(-2px);
+  color: #fff !important;
+  text-decoration: none !important;
 }
 
 form {
@@ -80,14 +120,15 @@ button:disabled {
 }
 
 .committee {
-  margin-top: 2.5rem;
+  margin-top: 3rem;
 }
 
-.committee h2 {
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
+h2 {
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
   border-bottom: 2px solid #ccc;
   padding-bottom: 0.25rem;
+  color: #1f2937;
 }
 
 .columns {
@@ -111,15 +152,25 @@ button:disabled {
 
 .article, .hearing {
   background-color: #fff;
-  border-left: 4px solid #b00;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-left: 4px solid #d62828;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .date {
   font-weight: bold;
+  color: #b00;
+}
+
+h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h2 a:hover {
+  text-decoration: none;
   color: #b00;
 }
 
@@ -129,11 +180,63 @@ a {
 }
 
 a:hover {
-  text-decoration: underline;
-  color: #0077cc;
+  text-decoration: none;
+  color: #3c99dc;
 }
 
 .hearings-block {
   width: 100%;
   text-align: center;
 }
+
+#loading-bar-container {
+  width: 300px;
+  height: 6px;
+  margin: 1.2rem auto 0;
+  background-color: #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  display: none;
+}
+
+.loading-bar {
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(to right, #b00, #d62828);
+  animation: loading-slide 1s linear infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.footer {
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+.footer img {
+  max-width: 200px;
+  height: auto;
+  transition: opacity 0.2s ease;
+}
+
+.footer img:hover {
+  opacity: 0.5;
+}
+

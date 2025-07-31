@@ -70,7 +70,10 @@ def fetch_cms_inov_articles(start_date=None):
             except Exception:
                 continue
 
-        return results
+        return {
+            "url": url,
+            "articles": results,
+        }
 
     finally:
         driver.quit()
