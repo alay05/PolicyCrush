@@ -12,6 +12,8 @@ from sources.senate.judiciary import fetch_jud_articles
 from sources.senate.small_business import fetch_smb_articles
 from sources.senate.veterans import fetch_vet_articles
 
+from logic.classify import classify
+
 senate = Blueprint("senate", __name__)
 
 SENATE = {
@@ -33,9 +35,12 @@ def senate_view():
     start_date = None
     error = None
     committees = {}
+    use_openai = False 
 
     if request.method == "POST":
         input_date = request.form.get("start_date", "").strip()
+        use_openai = "use_openai" in request.form
+
         if input_date:
             try:
                 start_date = datetime.strptime(input_date, "%Y-%m-%d").date()
@@ -57,6 +62,9 @@ def senate_view():
                     }
 
                     for article in articles:
+                        if use_openai:
+                            print("classifying")
+                            article["suggestion"] = classify(article["title"])
                         tag = article.get("tag", "")
                         if tag in grouped:
                             grouped[tag].append(article)
@@ -65,4 +73,4 @@ def senate_view():
                 except Exception as e:
                     print(f"Error loading {name}: {e}")
 
-    return render_template("senate.html", committees=committees, error=error, input_date=input_date)
+    return render_template("senate.html", committees=committees, error=error, input_date=input_date, use_openai=use_openai)

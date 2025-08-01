@@ -23,7 +23,7 @@ def fetch_home_articles(start_date=None):
 
             # Title
             title_tag = block.select_one("h5.jet-listing-dynamic-field__content")
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True).replace("➞", "").strip() if title_tag else None
             if not title:
                 continue
 
