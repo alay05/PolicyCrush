@@ -5,7 +5,7 @@ from routes.news import news
 from routes.senate import senate
 from routes.house import house
 from routes.add_event import add_event
-from routes.pretty_date import pretty_date
+from features.pretty_date import pretty_date
 
 app = Flask(__name__)
 
@@ -22,3 +22,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

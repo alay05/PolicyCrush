@@ -11,7 +11,7 @@ from sources.news.hhs import fetch_hhs_articles
 from sources.news.whitehouse import fetch_whitehouse_articles
 from sources.news.omb import fetch_omb_articles
 
-from logic.classify import classify
+from features.classify import classify
 
 news = Blueprint("news", __name__)
 

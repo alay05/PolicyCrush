@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from add_event.calendar import fetch_hearing_html, extract_event_info, create_event_addevent
+from features.calendar import fetch_hearing_html, extract_event_info, create_event_addevent
 import json
 from datetime import datetime, timedelta
 
@@ -11,13 +11,13 @@ def hearing_form():
     error = None
 
     if request.method == "POST":
-        url = request.form.get("hearing_url")
+        url = request.form.get("event-url")
         if not url:
-            error = "Please enter a hearing URL."
+            error = "Please enter a URL."
         else:
             try:
                 raw_text = fetch_hearing_html(url)
-                extracted = extract_event_info(raw_text)
+                extracted = extract_event_info(raw_text)    
 
                 parsed = json.loads(extracted)
                 start_dt = datetime.strptime(f"{parsed['date']} {parsed['time']}", "%Y-%m-%d %H:%M")
@@ -25,22 +25,24 @@ def hearing_form():
 
                 event = {
                     "title": "[AUTO-TEST]" + parsed["title"],
-                    "start": start_dt.strftime("%Y-%m-%d %H:%M"),
-                    "end": end_dt.strftime("%Y-%m-%d %H:%M"),
+                    "datetime_start": start_dt.strftime("%Y-%m-%d %H:%M"),
+                    "datetime_end": end_dt.strftime("%Y-%m-%d %H:%M"),
                     "location": parsed.get("location", ""),
-                    "description": parsed.get("description", ""),
+                    "description": url,
                     "timezone": "America/New_York"
                 }
 
-                response = create_event_addevent(event)
+                create_event_addevent(event)
+
                 result = {
                     "title": event["title"],
-                    "datetime": event["start"],
+                    "datetime": event["datetime_start"],
                     "location": event["location"],
-                    "addevent_link": response.get("calendar_url", None) or "https://www.addevent.com"
+                    "addevent_link": "https://app.addevent.com/calendars/GT179952"
                 }
 
             except Exception as e:
-                error = f"Error: {e}"
+                print(e)
+                error = "Invalid Link"
 
     return render_template("add_event.html", result=result, error=error)

@@ -28,7 +28,7 @@ from sources.house.veterans_min import fetch_vet_min_articles
 from sources.house.ways_and_means_maj import fetch_wam_maj_articles
 from sources.house.ways_and_means_min import fetch_wam_min_articles
 
-from logic.classify import classify
+from features.classify import classify
 
 house = Blueprint("house", __name__)
 

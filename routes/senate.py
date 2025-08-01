@@ -12,7 +12,7 @@ from sources.senate.judiciary import fetch_jud_articles
 from sources.senate.small_business import fetch_smb_articles
 from sources.senate.veterans import fetch_vet_articles
 
-from logic.classify import classify
+from features.classify import classify
 
 senate = Blueprint("senate", __name__)
 

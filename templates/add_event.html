@@ -12,10 +12,14 @@
   <h1>AddEvent Population Tool</h1>
 
   <form method="POST" style="margin-top: 2rem; text-align: center;">
-    <label for="hearing_url">Hearing URL:</label>
-    <input type="url" name="hearing_url" id="hearing_url" placeholder="https://..." required style="padding: 6px 10px; width: 400px; border-radius: 6px; border: 1px solid #ccc;">
-    <button type="submit" style="padding: 6px 14px; margin-left: 10px;">Add to Calendar</button>
+    <label for="event-url">Event URL:</label>
+    <input type="url" name="event-url" id="event-url" placeholder="https://..." required style="padding: 6px 10px; width: 400px; border-radius: 6px; border: 1px solid #ccc;">
+    <button type="submit" id="submit-btn" disabled style="padding: 6px 14px; margin-left: 10px;">Add to Calendar</button>
   </form>
+
+  <div id="loading-bar-container">
+    <div class="loading-bar"></div>
+  </div>
 
   {% if error %}
     <p style="color: red; text-align: center; margin-top: 1.5rem;">{{ error }}</p>
@@ -23,13 +27,31 @@
 
   {% if result %}
     <div class="committee" style="margin-top: 2rem;">
-      <h2 style="text-align: center;">✅ Event Created</h2>
+      <h2 style="text-align: center;">Event Created</h2>
       <p style="text-align: center;"><strong>{{ result.title }}</strong></p>
-      <p style="text-align: center;">🗓 {{ result.datetime }}<br>📍 {{ result.location }}</p>
-      <p style="text-align: center;">
-        <a href="{{ result.addevent_link }}" target="_blank" class="suggestion-badge yes">View on AddEvent</a>
+      <p style="text-align: center;">{{ result.datetime | pretty_date(true) }}<br>{{ result.location }}</p>
+      <p style="text-align: center; margin-top: 0.5rem;">
+        <a href="{{ result.addevent_link }}" target="_blank" class="suggestion-badge yes" style="text-transform: none;">View on AddEvent</a>
       </p>
     </div>
   {% endif %}
+  <script>
+    const eventUrl = document.getElementById("event-url");
+    const submitBtn = document.getElementById("submit-btn");
+    const form = document.querySelector("form");
+    const loadingBar = document.getElementById("loading-bar-container");
+
+    function toggleSubmit() {
+      submitBtn.disabled = !eventUrl.value;
+    }
+
+    toggleSubmit();
+    eventUrl.addEventListener("input", toggleSubmit);
+
+    form.addEventListener("submit", () => {
+      loadingBar.style.display = "block";
+      document.querySelectorAll(".committee").forEach(el => el.remove());
+    });
+  </script>
 </body>
 </html>
