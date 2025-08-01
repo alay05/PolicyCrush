@@ -11,10 +11,19 @@
   <a href="/" class="home-button">← Home</a>
   <h1>Daily News</h1>
 
-  <form method="POST">
+  <form method="POST" style="display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
     <label for="start_date">Earliest Date:</label>
-    <input type="date" name="start_date" id="start_date" value="{{ input_date }}">
-    <button type="submit" id="submit-btn" disabled>Get Articles</button>
+    <input type="date" name="start_date" id="start_date" value="{{ input_date }}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
+
+    <div class="toggle-wrapper">
+      <label class="toggle-label" for="use_openai">Suggestions:</label>
+      <label class="switch">
+        <input type="checkbox" name="use_openai" id="use_openai" {% if use_openai %}checked{% endif %}>
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <button type="submit" id="submit-btn" disabled style="padding: 6px 14px;">Get Articles</button>
   </form>
 
   <div id="loading-bar-container">
@@ -31,9 +40,14 @@
         <h2><a href="{{ data['url'] }}" target="_blank">{{ source }}</a></h2>
         {% if data["items"] %}
           {% for a in data["items"] %}
-            <div class="article">
-              <span class="date">{{ a.date | pretty_date }}</span> - 
-              <a href="{{ a.url }}" target="_blank">{{ a.title or "Untitled" }}</a>
+            <div class="article" style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span class="date">{{ a.date | pretty_date }}</span> - 
+                <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+              </div>
+              {% if a.suggestion %}
+                <span class="suggestion-badge {{ a.suggestion | lower }} ml-5">{{ a.suggestion }}</span>
+              {% endif %}
             </div>
           {% endfor %}
         {% else %}

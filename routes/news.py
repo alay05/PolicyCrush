@@ -11,6 +11,8 @@ from sources.news.hhs import fetch_hhs_articles
 from sources.news.whitehouse import fetch_whitehouse_articles
 from sources.news.omb import fetch_omb_articles
 
+from logic.classify import classify
+
 news = Blueprint("news", __name__)
 
 NEWS = {
@@ -31,9 +33,12 @@ def news_view():
     start_date = None
     error = None
     articles = {}
+    use_openai = False 
 
     if request.method == "POST":
         input_date = request.form.get("start_date", "").strip()
+        use_openai = "use_openai" in request.form
+        
         if input_date:
             try:
                 start_date = datetime.strptime(input_date, "%Y-%m-%d").date()
@@ -44,11 +49,20 @@ def news_view():
             for name, fetch in NEWS.items():
                 try:
                     payload = fetch(start_date) 
+
+                    if use_openai:
+                      print("yes")
+                      for article in payload["articles"]:
+                          print("classifying")
+                          article["suggestion"] = classify(article["title"])
+                    
                     articles[name] = {
                         "url": payload["url"],
                         "items": payload["articles"]
                     }
+                    
+
                 except Exception as e:
                     print(f"Error fetching {name}: {e}")
 
-    return render_template("news.html", articles=articles, error=error, input_date=input_date)
+    return render_template("news.html", articles=articles, error=error, input_date=input_date, use_openai=use_openai)

@@ -26,7 +26,6 @@
     <button type="submit" id="submit-btn" disabled style="padding: 6px 14px;">Get Articles</button>
   </form>
 
-
   <div id="loading-bar-container">
     <div class="loading-bar"></div>
   </div>
@@ -51,7 +50,7 @@
                     <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
                   </div>
                   {% if a.suggestion %}
-                    <span class="suggestion-badge {{ a.suggestion | lower }} ml-3">{{ a.suggestion }}</span>
+                    <span class="suggestion-badge {{ a.suggestion | lower }} ml-5">{{ a.suggestion }}</span>
                   {% endif %}
                 </div>
               {% endfor %}
@@ -70,7 +69,7 @@
                     <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
                   </div>
                   {% if a.suggestion %}
-                    <span class="suggestion-badge {{ a.suggestion | lower }} ml-3">{{ a.suggestion }}</span>
+                    <span class="suggestion-badge {{ a.suggestion | lower }} ml-5">{{ a.suggestion }}</span>
                   {% endif %}
                 </div>
               {% endfor %}
@@ -92,7 +91,7 @@
                       <a href="{{ h.url }}" target="_blank">{{ h.title }}</a>
                     </div>
                     {% if h.suggestion %}
-                      <span class="suggestion-badge {{ h.suggestion | lower }} ml-3">{{ h.suggestion }}</span>
+                      <span class="suggestion-badge {{ h.suggestion | lower }} ml-5">{{ h.suggestion }}</span>
                     {% endif %}
                   </div>
                 {% endfor %}

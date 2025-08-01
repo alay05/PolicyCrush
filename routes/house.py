@@ -28,6 +28,8 @@ from sources.house.veterans_min import fetch_vet_min_articles
 from sources.house.ways_and_means_maj import fetch_wam_maj_articles
 from sources.house.ways_and_means_min import fetch_wam_min_articles
 
+from logic.classify import classify
+
 house = Blueprint("house", __name__)
 
 HOUSE = {
@@ -91,9 +93,12 @@ def house_view():
     start_date = None
     error = None
     committees = {}
+    use_openai = False
 
     if request.method == "POST":
         input_date = request.form.get("start_date", "").strip()
+        use_openai = "use_openai" in request.form
+
         if input_date:
             try:
                 start_date = datetime.strptime(input_date, "%Y-%m-%d").date()
@@ -101,16 +106,25 @@ def house_view():
                 error = "Invalid date."
 
         if not error and start_date:
-            for name, funcs in HOUSE.items():
+            for name, fetch in HOUSE.items():
                 try:
-                    maj_articles = funcs["majority"](start_date)
-                    min_articles = funcs["minority"](start_date)
+                    maj_articles = fetch["majority"](start_date)
+                    min_articles = fetch["minority"](start_date)
 
                     committees[name] = {
                         "majority": maj_articles,
                         "minority": min_articles,
                     }
+
+                    if use_openai:
+                      for article in maj_articles:
+                          print("classifying")
+                          article["suggestion"] = classify(article["title"])
+                      for article in min_articles:
+                          print("classifying")
+                          article["suggestion"] = classify(article["title"])
+                        
                 except Exception as e:
                     print(f"Error loading {name}: {e}")
 
-    return render_template("house.html", committees=committees, error=error, input_date=input_date)
+    return render_template("house.html", committees=committees, error=error, input_date=input_date, use_openai=use_openai)
