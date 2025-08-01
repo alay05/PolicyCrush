@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AddEvent Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+  <a href="/" class="home-button">← Home</a>
+  <h1>AddEvent Population Tool</h1>
+
+  <form method="POST" style="margin-top: 2rem; text-align: center;">
+    <label for="hearing_url">Hearing URL:</label>
+    <input type="url" name="hearing_url" id="hearing_url" placeholder="https://..." required style="padding: 6px 10px; width: 400px; border-radius: 6px; border: 1px solid #ccc;">
+    <button type="submit" style="padding: 6px 14px; margin-left: 10px;">Add to Calendar</button>
+  </form>
+
+  {% if error %}
+    <p style="color: red; text-align: center; margin-top: 1.5rem;">{{ error }}</p>
+  {% endif %}
+
+  {% if result %}
+    <div class="committee" style="margin-top: 2rem;">
+      <h2 style="text-align: center;">✅ Event Created</h2>
+      <p style="text-align: center;"><strong>{{ result.title }}</strong></p>
+      <p style="text-align: center;">🗓 {{ result.datetime }}<br>📍 {{ result.location }}</p>
+      <p style="text-align: center;">
+        <a href="{{ result.addevent_link }}" target="_blank" class="suggestion-badge yes">View on AddEvent</a>
+      </p>
+    </div>
+  {% endif %}
+</body>
+</html>
