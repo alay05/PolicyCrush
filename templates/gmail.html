@@ -16,12 +16,12 @@
       <button type="submit">Get Unread Messages</button>
     </form>
 
-    <a href="{{ url_for('gmail.gmail_logout') }}" style="margin-left: 1rem; display: inline-block;">
+    <!-- <a href="{{ url_for('gmail.gmail_logout') }}" style="margin-left: 1rem; display: inline-block;">
       <button type="button"
               {% if not token_exists %}disabled style="opacity: 0.5; cursor: not-allowed; background-color: #aaa;"{% else %}style="background-color: #d62828; color: white;"{% endif %}>
         Logout
       </button>
-    </a>
+    </a> -->
   </div>
 
   <div id="loading-bar-container">
