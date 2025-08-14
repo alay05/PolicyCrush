@@ -38,7 +38,6 @@
                   <span class="btn-label">AddEvent</span>
                   <span class="spinner" aria-hidden="true"></span>
                 </button>
-                <a class="addevent-link" target="_blank" rel="noopener" hidden>Added ✓</a>
               </div>
             {% endif %}
           </div>
@@ -53,12 +52,23 @@
     <a href="{{ url_for('production.production_senate') }}" style="text-decoration:none;">
       <button type="button">← Back</button>
     </a>
+    <a class="export-btn" href="{{ url_for('production.production_export_pdf') }}" style="text-decoration:none;">
+      <button type="button">Export PDF</button>
+    </a>
   </div>
   <script>
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.addevent-btn');
     if (!btn) return;
 
+    if (btn.classList.contains('done')) {
+      const href = btn.dataset.href || "https://app.addevent.com/calendars/GT179952";
+      window.open(href, "_blank", "noopener");
+      return;
+    }
+
+    const wrap = btn.closest('.addevent-controls');
+    const link = wrap.querySelector('.addevent-link'); 
     const url = btn.dataset.url;
     if (!url || btn.disabled) return;
 
@@ -72,23 +82,21 @@
         body: JSON.stringify({ url })
       });
       const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Failed to create event");
 
-      if (!data.ok) throw new Error(data.error || 'Failed to create event');
-
-      // Success UI — turn button into a link
-      btn.classList.remove('loading');
+      btn.classList.remove('loading', 'error');
       btn.classList.add('done');
-      btn.innerHTML = `<a href="https://app.addevent.com/calendars/GT179952" 
-                          target="_blank" 
-                          rel="noopener"
-                          style="color:white; text-decoration:none; display:block;">
-                          Added
-                      </a>`;
+      btn.disabled = false; 
+      btn.querySelector('.btn-label').textContent = 'Added';
+      btn.dataset.href = "https://app.addevent.com/calendars/GT179952";
+
+      if (link) link.hidden = true;
     } catch (err) {
       btn.classList.remove('loading');
-      btn.disabled = false;
       btn.classList.add('error');
-      btn.querySelector('.btn-label').textContent = 'Retry';
+      btn.disabled = false;
+      const label = btn.querySelector('.btn-label');
+      if (label) label.textContent = 'Retry';
       console.error(err);
     }
   });

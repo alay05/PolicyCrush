@@ -8,7 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body>
-  <h1 style="text-align:center; margin-top:2rem;">PolicyCrush Production</h1>
+  <a href="/" class="home-button">← Home</a>
+  <h1>PolicyCrush Production</h1>
 
   <form method="POST" action="{{ url_for('production.production_start_action') }}">
     <button type="submit" name="action" value="start">Start</button>

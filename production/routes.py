@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, make_response, jsonify
 from datetime import datetime, timedelta
 import json
+from weasyprint import HTML
 
 from production.adapters import fetch_gmail_unread
 from production.adapters import fetch_news_bundle
@@ -639,3 +640,25 @@ def production_addevent():
         return jsonify({"ok": True, "event_id": event_id, "event_url": event_url})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@production.get("/export-pdf")
+def production_export_pdf():
+    _ensure_session_bucket()
+    cur = session.get("curation", {})
+
+    html = render_template(
+        "review_pdf.html",
+        generated_at=datetime.now(),
+        gmail_items=cur.get("gmail", []),
+        news_items=cur.get("news", []),
+        house_items=cur.get("house", []),
+        senate_items=cur.get("senate", []),
+    )
+
+    pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
+    stamp = datetime.now().strftime("%m/%d")
+    resp = make_response(pdf_bytes)
+    resp.headers["Content-Type"] = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="PolicyCrush_{stamp}.pdf"'
+    return resp

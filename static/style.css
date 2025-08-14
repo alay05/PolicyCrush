@@ -40,13 +40,13 @@ h1 {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 35px;
-  margin-bottom: 1.75rem;
+  gap: 25px;
+  margin-bottom: 0.75rem;
   margin-top: 0.75rem;
 }
 
 .nav-buttons a button {
-  font-size: 1.1em;
+  font-size: 1.1rem;
   width: 190px;
   height: 75px;
   border: none;

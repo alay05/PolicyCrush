@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Review Selections (PDF)</title>
+  <style>
+    /* Page & typography */
+    @page {
+      size: Letter;                 /* or A4 */
+      margin: 18mm 16mm 20mm;
+      @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 10pt; color:#6b7280;
+      }
+    }
+    body {
+      font: 11pt/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
+      color: #111827;
+    }
+    h1 { font-size: 20pt; margin: 0 0 8mm; }
+    h2 {
+      font-size: 14pt; margin: 10mm 0 6px;
+      padding-bottom: 4px; border-bottom: 1.5px solid #e5e7eb;
+    }
+
+    /* Table layout per section */
+    table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+    thead th {
+      text-align: left; font-size: 10pt; color:#6b7280; font-weight: 700;
+      padding: 4px 6px; border-bottom: 1px solid #e5e7eb;
+    }
+    td {
+      vertical-align: top; padding: 6px 8px;
+      background: #f9fafb; border-radius: 8px;
+    }
+    .col-date  { width: 22%; white-space: nowrap; font-weight: 700; }
+    .col-title { width: auto; }
+    .col-meta  { width: 18%; }
+
+    /* Links & wrapping */
+    a { color:#1d4ed8; text-decoration: none; }
+    .url { color:#6b7280; font-size: 9.5pt; word-break: break-all; }
+
+    /* Badges & meta */
+    .badge {
+      display: inline-block; padding: 1px 6px; border-radius: 9999px;
+      font-size: 9pt; font-weight: 700; color:#065f46; background:#d1fae5;
+    }
+    .muted { color:#6b7280; font-size: 9.5pt; }
+
+    /* Pagination friendliness */
+    .row { break-inside: avoid; }
+    p, .col-title { orphans: 3; widows: 3; }
+  </style>
+</head>
+<body>
+  <h1>Review Selections</h1>
+
+  {% for section, items in [
+    ('Gmail Items', gmail_items),
+    ('Daily News', news_items),
+    ('House Committees', house_items),
+    ('Senate Committees', senate_items)
+  ] %}
+    {% if items and items|length %}
+      <h2>{{ section }}</h2>
+      <table role="table" aria-label="{{ section }}">
+        <thead>
+          <tr>
+            <th class="col-date">Date</th>
+            <th class="col-title">Title</th>
+            <th class="col-meta">Meta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in items %}
+            <tr class="row">
+              <td class="col-date">{{ a.date | pretty_date(a.tag == 'hearing') }}</td>
+              <td class="col-title">
+                <div><a href="{{ a.url }}">{{ a.title }}</a></div>
+                <!-- show URL in small text; remove if you don’t want it -->
+                <div class="url">{{ a.url }}</div>
+              </td>
+              <td class="col-meta">
+                {% if a.tag %}
+                  <span class="badge">{{ a.tag|title }}</span>
+                {% endif %}
+                {% if a.manual %}
+                  <div class="muted">Manual</div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endfor %}
+
+  <div class="muted" style="margin-top:10mm;">
+    Generated {{ generated_at.strftime("%Y-%m-%d %H:%M") }}
+  </div>
+</body>
+</html>
