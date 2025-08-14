@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Production - Gmail</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+  <a href="/" class="home-button">← Home</a>
+  <h1>Gmail Newsletters</h1>
+
+  <form method="POST" action="{{ url_for('production.production_select_gmail') }}" id="gmail-form" style="display: block;">
+    <div style="margin: 1rem 0; text-align:center;">
+      <button type="submit" name="action" value="load">Get Unread Messages</button>
+    </div>
+
+    <div id="loading-bar-container">
+      <div class="loading-bar"></div>
+    </div>
+
+    {% if error %}
+      <p style="color: red; text-align: center;">{{ error }}</p>
+    {% endif %}
+
+    {% if articles %}
+      {% for email in articles %}
+        <input type="hidden" name="email_id" value="{{ email.id }}">
+        <div class="email">
+          <h2>{{ email.title }}</h2>
+          <div class="columns" style="justify-content: center;">
+            <div class="column" style="flex: 1 1 90%;">
+              <div class="article">
+                <iframe srcdoc='{{ email.html | escape | safe }}'
+                        style="width: 100%; height: 600px; border: none;"></iframe>
+              </div>
+
+              <div class="manual-section" id="manual-{{ email.id }}">
+                <h3>Add Items</h3>
+
+                <div class="manual-grid rows" data-email-id="{{ email.id }}">
+                  {% set rows = drafts.get(email.id) or [{}] %}
+                  {% for row in rows %}
+                    <div class="manual-row">
+                      <div class="field">
+                        <label>Title</label>
+                        <input type="text" name="gmail_manual_title_{{ email.id }}[]" value="{{ row.title or '' }}" placeholder="Headline">
+                      </div>
+                      <div class="field">
+                        <label>Date</label>
+                        <input type="date" name="gmail_manual_date_{{ email.id }}[]" value="{{ row.date or '' }}">
+                      </div>
+                      <div class="field">
+                        <label>URL</label>
+                        <input type="url" name="gmail_manual_url_{{ email.id }}[]" value="{{ row.url or '' }}" placeholder="https://...">
+                      </div>
+                      <button type="button" class="delete-row">✕</button>
+                    </div>
+                  {% endfor %}
+                </div>
+
+                <!-- hidden template for cloning -->
+                <template id="tpl-{{ email.id }}">
+                  <div class="manual-row">
+                    <div class="field">
+                      <label>Title</label>
+                      <input type="text" name="gmail_manual_title_{{ email.id }}[]" placeholder="Headline">
+                    </div>
+                    <div class="field">
+                      <label>Date</label>
+                      <input type="date" name="gmail_manual_date_{{ email.id }}[]">
+                    </div>
+                    <div class="field">
+                      <label>URL</label>
+                      <input type="url" name="gmail_manual_url_{{ email.id }}[]" placeholder="https://...">
+                    </div>
+                    <button type="button" class="delete-row">✕</button>
+                  </div>
+                </template>
+
+                <div class="manual-actions">
+                  <button type="button" class="add-row" data-email-id="{{ email.id }}">Add</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% elif not error and request.method == 'POST' and action_was_load %}
+      <p style="text-align: center;"><em>No unread emails.</em></p>
+    {% endif %}
+
+    <div style="margin: 1rem 0; text-align:center;">
+      <button id="next-button" type="submit" name="action" value="next" class="btn-primary" {% if not articles %}hidden{% endif %}> Next → News </button>
+    </div>
+  </form>
+
+  <script>
+    const form = document.getElementById("gmail-form");
+    const loadingBar = document.getElementById("loading-bar-container");
+    let submitting = false;
+
+    form.addEventListener("submit", (e) => {
+      if (submitting) {
+        e.preventDefault();
+        return;
+      }
+      const action = e.submitter ? e.submitter.value : null;
+      if (action === "load") {
+        submitting = true;
+        if (loadingBar) loadingBar.style.display = "block";
+        document.querySelectorAll(".email").forEach((el) => el.remove());
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      const del = e.target.closest(".delete-row");
+      if (del) {
+        const row = del.closest(".manual-row");
+        if (row) row.remove();
+      }
+      const add = e.target.closest(".add-row");
+      if (add) {
+        const eid = add.dataset.emailId;
+        const rows = document.querySelector(`#manual-${eid} .rows`);
+        const tpl = document.getElementById(`tpl-${eid}`);
+        if (!rows || !tpl) return;
+        const frag = tpl.content.cloneNode(true);
+        rows.appendChild(frag);
+        const newTitle = rows.querySelector('.manual-row:last-of-type input[type="text"]');
+        if (newTitle) newTitle.focus();
+      }
+    });
+  </script>
+
+</body>
+</html>

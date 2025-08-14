@@ -1,31 +1,97 @@
-<!doctype html>
-<html>
-  <body>
-    <h1>Step 3: Review</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Production - Review</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a href="/" class="home-button">← Home</a>
+  <h1>Review Your Selections</h1>
 
-    <h2>Gmail</h2>
-    <ul>
-      {% for a in data.gmail %}
-        <li>{{ a.date }} — <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a></li>
+  {% for section, items in [
+    ('Gmail Items', gmail_items),
+    ('Daily News', news_items),
+    ('House Committees', house_items),
+    ('Senate Committees', senate_items)
+  ] %}
+    <div class="source">
+      <h2>{{ section }}</h2>
+      {% if items %}
+        {% for a in items %}
+          <div class="article" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span class="date">{{ a.date | pretty_date(a.tag == 'hearing') }}</span> -
+              <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+            </div>
+
+            {% if a.tag == 'hearing' %}
+              <div class="addevent-controls">
+                <button
+                  type="button"
+                  class="addevent-btn"
+                  data-url="{{ a.url }}"
+                  data-id="{{ a.id }}"
+                  aria-label="Add to calendar via AddEvent"
+                >
+                  <span class="btn-label">AddEvent</span>
+                  <span class="spinner" aria-hidden="true"></span>
+                </button>
+                <a class="addevent-link" target="_blank" rel="noopener" hidden>Added ✓</a>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
       {% else %}
-        <li><em>none selected</em></li>
-      {% endfor %}
-    </ul>
-
-    <h2>Senate</h2>
-    <ul>
-      {% for a in data.senate %}
-        <li>{{ a.date }} — <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a></li>
-      {% else %}
-        <li><em>none selected</em></li>
-      {% endfor %}
-    </ul>
-
-    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
-      <a href="{{ url_for('production.production_senate') }}" style="display:inline-block;padding:.5rem .75rem;border:1px solid #ccc;text-decoration:none;">← Back to Senate</a>
-      <form method="post" action="{{ url_for('production.production_reset') }}">
-        <button type="submit">Start Over</button>
-      </form>
+        <p><em>No items selected.</em></p>
+      {% endif %}
     </div>
-  </body>
+  {% endfor %}
+
+  <div style="text-align: center; margin-top: 2rem;">
+    <a href="{{ url_for('production.production_senate') }}" style="text-decoration:none;">
+      <button type="button">← Back</button>
+    </a>
+  </div>
+  <script>
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.addevent-btn');
+    if (!btn) return;
+
+    const url = btn.dataset.url;
+    if (!url || btn.disabled) return;
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch("{{ url_for('production.production_addevent') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+
+      if (!data.ok) throw new Error(data.error || 'Failed to create event');
+
+      // Success UI — turn button into a link
+      btn.classList.remove('loading');
+      btn.classList.add('done');
+      btn.innerHTML = `<a href="https://app.addevent.com/calendars/GT179952" 
+                          target="_blank" 
+                          rel="noopener"
+                          style="color:white; text-decoration:none; display:block;">
+                          Added
+                      </a>`;
+    } catch (err) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      btn.classList.add('error');
+      btn.querySelector('.btn-label').textContent = 'Retry';
+      console.error(err);
+    }
+  });
+  </script>
+</body>
 </html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Production - News</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+  <a href="/" class="home-button">← Home</a>
+  <h1>Daily News</h1>
+
+  <form method="POST" action="{{ url_for('production.production_select_news') }}" style="display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
+    <label for="start_date">Earliest Date:</label>
+    <input type="date" name="start_date" id="start_date" value="{{ input_date }}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
+
+    <div class="toggle-wrapper">
+      <label class="toggle-label" for="use_openai">Suggestions:</label>
+      <label class="switch">
+        <input type="checkbox" name="use_openai" id="use_openai" {% if use_openai %}checked{% endif %}>
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <button type="submit" name="action" value="load" id="submit-btn" disabled style="padding: 6px 14px;">Get Articles</button>
+  </form>
+
+  <div id="loading-bar-container">
+    <div class="loading-bar"></div>
+  </div>
+
+  {% if error %}
+    <p style="color: red;">{{ error }}</p>
+  {% endif %}
+
+  {% if articles %}
+    <form method="POST" action="{{ url_for('production.production_select_news') }}" style="display:block; margin-top: 0.5rem;">
+      {% for source, data in articles.items() %}
+        <div class="source">
+          <h2><a href="{{ data['url'] }}" target="_blank">{{ source }}</a></h2>
+          {% if data["items"] %}
+            {% for a in data["items"] %}
+              <div class="article" style="display: flex; justify-content: space-between; align-items: center;">
+                <label class="article-check" style="flex:1;">
+                  <input type="checkbox" name="selected" value="{{ a.id }}" {% if a.id in prechecked %}checked{% endif %}>
+                  <span><span class="date">{{ a.date | pretty_date }}</span> - <a href="{{ a.url }}" target="_blank">{{ a.title }}</a></span>
+                </label>
+                {% if a.suggestion %}
+                  <span class="suggestion-badge {{ a.suggestion | lower }} ml-5">{{ a.suggestion }}</span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <p><em>No articles found.</em></p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="manual-section" style="margin-top: 1.25rem;">
+        <h3>Add Items</h3>
+        <div class="manual-grid rows" id="news-manual-rows">
+          {% set rows = manual_rows or [{}] %}
+          {% for row in rows %}
+            <div class="manual-row">
+              <div class="field">
+                <label>Title</label>
+                <input type="text" name="news_manual_title[]" value="{{ row.title or '' }}" placeholder="Headline">
+              </div>
+              <div class="field">
+                <label>Date</label>
+                <input type="date" name="news_manual_date[]" value="{{ row.date or '' }}">
+              </div>
+              <div class="field">
+                <label>URL</label>
+                <input type="url" name="news_manual_url[]" value="{{ row.url or '' }}" placeholder="https://...">
+              </div>
+              <button type="button" class="delete-row">✕</button>
+            </div>
+          {% endfor %}
+        </div>
+
+        <template id="news-manual-template">
+          <div class="manual-row">
+            <div class="field">
+              <label>Title</label>
+              <input type="text" name="news_manual_title[]" placeholder="Headline">
+            </div>
+            <div class="field">
+              <label>Date</label>
+              <input type="date" name="news_manual_date[]">
+            </div>
+            <div class="field">
+              <label>URL</label>
+              <input type="url" name="news_manual_url[]" placeholder="https://...">
+            </div>
+            <button type="button" class="delete-row">✕</button>
+          </div>
+        </template>
+
+        <div class="manual-actions">
+          <button type="button" class="add-row" data-target="news-manual-rows" data-template="news-manual-template">Add</button>
+        </div>
+      </div>
+
+      <div style="margin: 1rem 0; text-align:center;">
+        <button type="submit" name="action" value="back">← Back</button>
+        <button type="submit" name="action" value="next" class="btn-primary">Next → House</button>
+      </div>
+    </form>
+  {% endif %}
+
+  <script>
+    const dateInput = document.getElementById("start_date");
+    const submitBtn = document.getElementById("submit-btn");
+    const loadForm = document.querySelector("form[action='{{ url_for('production.production_select_news') }}']");
+    const loadingBar = document.getElementById("loading-bar-container");
+
+    function toggleButton() {
+      submitBtn.disabled = !dateInput.value;
+    }
+    toggleButton();
+    dateInput.addEventListener("input", toggleButton);
+
+    loadForm.addEventListener("submit", (e) => {
+      if (e.submitter && e.submitter.value === "load") {
+        if (loadingBar) loadingBar.style.display = "block";
+        document.querySelectorAll(".article, .source").forEach(el => el.remove());
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      const del = e.target.closest(".delete-row");
+      if (del) {
+        const row = del.closest(".manual-row");
+        if (row) row.remove();
+      }
+      const add = e.target.closest(".add-row");
+      if (add) {
+        const rows = document.getElementById(add.dataset.target);
+        const tpl = document.getElementById(add.dataset.template);
+        if (!rows || !tpl) return;
+        rows.appendChild(tpl.content.cloneNode(true));
+        const newTitle = rows.querySelector('.manual-row:last-of-type input[type="text"]');
+        if (newTitle) newTitle.focus();
+      }
+    });
+  </script>
+</body>
+</html>

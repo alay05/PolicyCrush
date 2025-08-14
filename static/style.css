@@ -349,3 +349,192 @@ a:hover {
   animation: fadeInUp 0.6s ease-out forwards;
 }
 
+
+/* ===== Manual items (Title / Date / URL) ===== */
+.manual-section {
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+.manual-section h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  color: #1f2937;
+  letter-spacing: -0.2px;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: 1fr 160px 1fr auto; /* Title | Date | URL | Delete */
+  gap: 0.5rem 0.6rem;
+  align-items: end;
+}
+
+/* A single row of inputs + delete */
+.manual-row {
+  display: contents; /* lets grid children place nicely */
+}
+
+.manual-row .field {
+  display: flex;
+  flex-direction: column;
+}
+
+.manual-row .field label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.manual-row input[type="text"],
+.manual-row input[type="url"],
+.manual-row input[type="date"] {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+.manual-row input:focus {
+  outline: none;
+  border-color: #d62828;
+  box-shadow: 0 0 0 3px rgba(214,40,40,.12);
+}
+
+.delete-row {
+  align-self: end;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #f1c9c9;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.delete-row:hover {
+  background: #fecaca;
+}
+
+/* Actions under the grid */
+.manual-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Small “Add” button that matches your style */
+.btn-secondary,
+.add-row {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #111827;
+  padding: 0.5rem .8rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.add-row:hover {
+  background: #eef2f7;
+  transform: translateY(-1px);
+}
+
+.article-check {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.article-check input[type="checkbox"],
+input.article-check[type="checkbox"] {
+  flex: 0 0 18px; 
+  width: 18px;
+  height: 18px;
+  font-size: 16px;  
+  vertical-align: middle;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.article:has(.article-check input[type="checkbox"]:checked) {
+  border-left-color: #2563eb;
+  background-color: #eff6ff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+
+
+
+/* AddEvent Button */
+.addevent-btn {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(to right, #4CAF79, #449D6E);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.25s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.addevent-btn:hover:not(:disabled) {
+  background: linear-gradient(to right, #58B285, #4FA57A); 
+  transform: scale(1.03);
+}
+
+/* Loading spinner state */
+.addevent-btn.loading {
+  pointer-events: none;
+}
+.addevent-btn.loading .btn-label {
+  opacity: 0.5;
+}
+.addevent-btn.loading .spinner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.6);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Added state */
+.addevent-btn.done {
+  background: linear-gradient(to right, #145DA0, #0B4F8C); 
+  color: #fff
+}
+.addevent-btn.done:hover {
+  background: linear-gradient(to right, #1669B2, #0D5C9E); 
+  transform: scale(1.03);
+}
+
+/* Error / retry state */
+.addevent-btn.error {
+  background: linear-gradient(to right, #E74C3C, #D64541);
+}
+.addevent-btn.error:hover {
+  background: linear-gradient(to right, #EC5F50, #E04F44);
+  transform: scale(1.03);
+}
