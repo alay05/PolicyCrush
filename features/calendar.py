@@ -30,7 +30,7 @@ Return ONLY raw, valid JSON with the following fields:
 - "time" (HH:MM in 24-hour format)
 - "location" (string or empty)
 
-DO NOT include any explanation, formatting, markdown, or commentary. ONLY return the JSON object.
+DO NOT include any explanation, formatting, markdown, or commentary. DO NOT make up or infer any information. ONLY return the JSON object.
 
 Text:
 {page_text[:4000]}

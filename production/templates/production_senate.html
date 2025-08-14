@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Step 2: Senate</h1>
+    <form method="post" action="{{ url_for('production.production_select_senate') }}">
+      <ul>
+        {% for a in articles %}
+          <li>
+            <label>
+              <input type="checkbox" name="selected" value="{{ a.id }}"
+                     {% if a.id in prechecked %}checked{% endif %}>
+              {{ a.date }} — <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <hr>
+      <h3>Add Custom Items</h3>
+      <input type="hidden" name="senate_manual_count" value="{{ manual_rows|length }}" />
+      <div style="display:flex;flex-direction:column;gap:.75rem;max-width:640px;">
+        {% for row in manual_rows %}
+          {% set i = loop.index0 %}
+          <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:.5rem;align-items:end;">
+            <label>Title
+              <input type="text" name="senate_manual_title_{{ i }}" value="{{ row.title or '' }}" placeholder="Headline">
+            </label>
+            <label>Date
+              <input type="date" name="senate_manual_date_{{ i }}" value="{{ row.date or '' }}">
+            </label>
+            <label>URL
+              <input type="url" name="senate_manual_url_{{ i }}" value="{{ row.url or '' }}" placeholder="https://...">
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button type="submit" name="action" value="back">← Back to Gmail (save)</button>
+        <button type="submit" name="action" value="add">Add another</button>
+        <button type="submit" name="action" value="next">Next → Review</button>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('production.production_reset') }}" style="margin-top:1rem">
+      <button type="submit">Reset</button>
+    </form>
+  </body>
+</html>

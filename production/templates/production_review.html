@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Step 3: Review</h1>
+
+    <h2>Gmail</h2>
+    <ul>
+      {% for a in data.gmail %}
+        <li>{{ a.date }} — <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a></li>
+      {% else %}
+        <li><em>none selected</em></li>
+      {% endfor %}
+    </ul>
+
+    <h2>Senate</h2>
+    <ul>
+      {% for a in data.senate %}
+        <li>{{ a.date }} — <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a></li>
+      {% else %}
+        <li><em>none selected</em></li>
+      {% endfor %}
+    </ul>
+
+    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+      <a href="{{ url_for('production.production_senate') }}" style="display:inline-block;padding:.5rem .75rem;border:1px solid #ccc;text-decoration:none;">← Back to Senate</a>
+      <form method="post" action="{{ url_for('production.production_reset') }}">
+        <button type="submit">Start Over</button>
+      </form>
+    </div>
+  </body>
+</html>
