@@ -2,11 +2,13 @@ from flask import Blueprint, render_template, request, session, redirect, url_fo
 from datetime import datetime, timedelta
 import json
 from weasyprint import HTML
+import hashlib
 
 from production.adapters import fetch_gmail_unread
 from production.adapters import fetch_news_bundle
 from production.adapters import fetch_house_bundle
 from production.adapters import fetch_senate_bundle
+from features.categorize import categorize_article, SPECIAL_CALENDAR
 
 from features.calendar import (
     fetch_hearing_html,
@@ -32,6 +34,23 @@ def _ensure_session_bucket():
         session["house_ready"] = False
     if "senate_ready" not in session:
         session["senate_ready"] = False
+    if "categorize_ready" not in session:
+        session["categorize_ready"] = False
+    if "categories_cache" not in session:
+        session["categories_cache"] = None
+
+def _rehydrate(items, store):
+    resolved = []
+    for a in items or []:
+        if a.get("manual"):
+            resolved.append(a)  
+        else:
+            obj = store.get(a.get("id"))
+            if obj:
+                resolved.append(obj)
+            else:
+                resolved.append(a)
+    return resolved
 
 def _reset_all():
     session.clear()
@@ -39,6 +58,42 @@ def _reset_all():
     NEWS_STORE.clear()
     HOUSE_STORE.clear()
     SENATE_STORE.clear()
+
+def _signature(items):
+    """
+    Stable signature of the selected items to avoid re-categorizing
+    unnecessarily. Uses id/title/tag triplets.
+    """
+    parts = []
+    for it in items:
+        parts.append(f"{it.get('id','')}|{it.get('title','')}|{it.get('tag','')}")
+    blob = "\n".join(sorted(parts))
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()
+
+def _ref(item, source: str):
+    """Create a tiny reference for session storage."""
+    return {"id": item.get("id"), "source": source}
+
+def _resolve_ref(ref, cur):
+    """Turn a stored ref back into a full item (or None)."""
+    rid = (ref or {}).get("id")
+    src = (ref or {}).get("source")
+    if not rid or not src:
+      return None
+
+    if src == "news":
+        return NEWS_STORE.get(rid)
+    if src == "house":
+        return HOUSE_STORE.get(rid)
+    if src == "senate":
+        return SENATE_STORE.get(rid)
+    if src == "gmail":
+        # Gmail items are only manual and live inside session["curation"]["gmail"]
+        for g in (cur.get("gmail") or []):
+            if g.get("id") == rid:
+                return g
+        return None
+    return None
 
 @production.get("/start")
 def production_start():
@@ -152,6 +207,11 @@ def production_select_gmail():
 
     session["curation"]["gmail"] = manuals
     session.modified = True
+
+    session["categorize_ready"] = False
+    session["categories_cache"] = None
+    session.modified = True
+
     return redirect(url_for("production.production_news"))
 
 
@@ -264,16 +324,16 @@ def production_select_news():
                 "source": "news",
             })
 
-    selected_ids = request.form.getlist("selected")
-    non_manuals = []
-    cache = session.get("news_cache") or {}
-    for name, meta in cache.get("sources", {}).items():
-        for aid in meta.get("ids", []):
-            if aid in selected_ids and aid in NEWS_STORE:
-                non_manuals.append(NEWS_STORE[aid])
-
+    selected_ids = set(request.form.getlist("selected"))
     session["news_manual_drafts"] = manual_rows
-    session["curation"]["news"] = non_manuals + manuals
+    session["curation"]["news"] = (
+        [{"id": aid, "manual": False, "source": "news"} for aid in selected_ids]
+        + manuals
+    )
+    session.modified = True
+
+    session["categorize_ready"] = False
+    session["categories_cache"] = None
     session.modified = True
 
     if action == "back":
@@ -410,16 +470,16 @@ def production_select_house():
                 "source": "house",
             })
 
-    selected_ids = request.form.getlist("selected")
-    non_manuals = []
-    cache = session.get("house_cache") or {}
-    for name, meta in cache.get("committees", {}).items():
-        for aid in meta.get("majority", []) + meta.get("minority", []):
-            if aid in selected_ids and aid in HOUSE_STORE:
-                non_manuals.append(HOUSE_STORE[aid])
-
+    selected_ids = set(request.form.getlist("selected"))
     session["house_manual_drafts"] = manual_rows
-    session["curation"]["house"] = non_manuals + manuals
+    session["curation"]["house"] = (
+        [{"id": aid, "manual": False, "source": "house"} for aid in selected_ids]
+        + manuals
+    )
+    session.modified = True
+
+    session["categorize_ready"] = False
+    session["categories_cache"] = None
     session.modified = True
 
     if action == "back":
@@ -565,32 +625,32 @@ def production_select_senate():
                 "source": "senate",
             })
 
-    selected_ids = request.form.getlist("selected")
-    non_manuals = []
-    cache = session.get("senate_cache") or {}
-    for name, meta in cache.get("committees", {}).items():
-        for aid in meta.get("majority", []) + meta.get("minority", []) + meta.get("hearing", []):
-            if aid in selected_ids and aid in SENATE_STORE:
-                non_manuals.append(SENATE_STORE[aid])
-
+    selected_ids = set(request.form.getlist("selected"))
     session["senate_manual_drafts"] = manual_rows
-    session["curation"]["senate"] = non_manuals + manuals
+    session["curation"]["senate"] = (
+        [{"id": aid, "manual": False, "source": "senate"} for aid in selected_ids]
+        + manuals
+    )
+    session.modified = True
+
+    session["categorize_ready"] = False
+    session["categories_cache"] = None
     session.modified = True
 
     if action == "back":
         return redirect(url_for("production.production_house"))
-    return redirect(url_for("production.production_review"))
+    return redirect(url_for("production.production_categorize"))
 
 @production.get("/review")
 def production_review():
     _ensure_session_bucket()
-    curation = session.get("curation", {})
+    cur = session.get("curation", {})
     resp = make_response(render_template(
         "production_review.html",
-        gmail_items=curation.get("gmail", []),
-        news_items=curation.get("news", []),
-        house_items=curation.get("house", []),
-        senate_items=curation.get("senate", []),
+        gmail_items=cur.get("gmail", []),
+        news_items=_rehydrate(cur.get("news"), NEWS_STORE),
+        house_items=_rehydrate(cur.get("house"), HOUSE_STORE),
+        senate_items=_rehydrate(cur.get("senate"), SENATE_STORE),
     ))
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
@@ -651,9 +711,9 @@ def production_export_pdf():
         "review_pdf.html",
         generated_at=datetime.now(),
         gmail_items=cur.get("gmail", []),
-        news_items=cur.get("news", []),
-        house_items=cur.get("house", []),
-        senate_items=cur.get("senate", []),
+        news_items   = _rehydrate(cur.get("news", []), NEWS_STORE),
+        house_items  = _rehydrate(cur.get("house", []), HOUSE_STORE),
+        senate_items = _rehydrate(cur.get("senate", []), SENATE_STORE)
     )
 
     pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
@@ -661,4 +721,152 @@ def production_export_pdf():
     resp = make_response(pdf_bytes)
     resp.headers["Content-Type"] = "application/pdf"
     resp.headers["Content-Disposition"] = f'attachment; filename="PolicyCrush_{stamp}.pdf"'
+    return resp
+
+@production.get("/categorize")
+def production_categorize():
+    """
+    Intermediate page: show selections grouped by source (like Review),
+    with a button to build categories.
+    """
+    _ensure_session_bucket()
+    cur = session.get("curation", {})
+    # hydrate selected ids into full objects
+    resp = make_response(render_template(
+        "production_categorize.html",
+        gmail_items=cur.get("gmail", []),
+        news_items=_rehydrate(cur.get("news"), NEWS_STORE),
+        house_items=_rehydrate(cur.get("house"), HOUSE_STORE),
+        senate_items=_rehydrate(cur.get("senate"), SENATE_STORE),
+        categorize_ready=bool(session.get("categorize_ready", False)),
+    ))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+@production.post("/categorize")
+def production_build_categories():
+    _ensure_session_bucket()
+    cur = session.get("curation", {})
+
+    gmail_items  = cur.get("gmail", [])
+    news_items   = _rehydrate(cur.get("news"), NEWS_STORE)
+    house_items  = _rehydrate(cur.get("house"), HOUSE_STORE)
+    senate_items = _rehydrate(cur.get("senate"), SENATE_STORE)
+
+    all_items = []
+    def add(src, arr):
+        for a in arr or []:
+            all_items.append({
+                "id": a.get("id"),
+                "title": a.get("title",""),
+                "url": a.get("url",""),
+                "date": a.get("date",""),
+                "tag": a.get("tag",""),
+                "source": src,
+                "committee": a.get("committee",""),
+            })
+    add("gmail", gmail_items)
+    add("news", news_items)
+    add("house", house_items)
+    add("senate", senate_items)
+
+    current_sig = _signature(all_items)
+    cache = session.get("categories_cache") or {}
+    if cache.get("sig") == current_sig and cache.get("categories"):
+        # Nothing changed; reuse existing categories
+        session["categorize_ready"] = True
+        session.modified = True
+        return redirect(url_for("production.production_categories"))
+
+    # …(existing code that builds `categories` via categorize_article)…
+
+    # Build categories index (label -> list[ref])
+    categories_index = {
+        SPECIAL_CALENDAR: [],
+        "Congress and the Administration": [],
+        "Health Insurance": [],
+        "Health Tech": [],
+        "Medicaid": [],
+        "Medicare": [],
+        "Pharmaceuticals and Medical Devices": [],
+        "Quality and Innovation": [],
+    }
+
+    for a in all_items:
+        is_hearing = (a.get("tag") == "hearing")
+        label = categorize_article(a.get("title",""), is_hearing=is_hearing)
+        if label not in categories_index:
+            label = "Quality and Innovation"
+        categories_index[label].append(_ref(a, a.get("source")))
+        
+    session["categories_cache"] = {
+        "built_at": datetime.now().isoformat(),
+        "sig": current_sig,
+        "count": len(all_items),
+        "index": categories_index,   # << store refs only
+    }
+    session["categorize_ready"] = True
+    session.modified = True
+    return redirect(url_for("production.production_categories"))
+
+
+@production.get("/categories")
+def production_categories():
+    _ensure_session_bucket()
+    cache = session.get("categories_cache")
+    if not cache or not cache.get("index"):
+        return redirect(url_for("production.production_categorize"))
+
+    cur = session.get("curation", {})
+    index = cache["index"]
+
+    # Build a render-friendly dict with full items (not stored in session)
+    hydrated = {}
+    for label, refs in index.items():
+        items = []
+        for ref in refs or []:
+            resolved = _resolve_ref(ref, cur)
+            if resolved:
+                items.append(resolved)
+        hydrated[label] = items
+
+    return render_template(
+        "production_categories.html",
+        categories=hydrated,
+        built_at=cache.get("built_at"),
+    )
+
+
+@production.get("/export-categories-pdf")
+def production_export_categories_pdf():
+    _ensure_session_bucket()
+    cache = session.get("categories_cache") or {}
+    index = cache.get("index")
+    if not index:
+        return redirect(url_for("production.production_categorize"))
+
+    cur = session.get("curation", {})
+    hydrated = {}
+    for label, refs in index.items():
+        items = []
+        for ref in refs or []:
+            resolved = _resolve_ref(ref, cur)
+            if resolved:
+                items.append(resolved)
+        hydrated[label] = items
+
+    html = render_template(
+        "categories_pdf.html",
+        generated_at=datetime.now(),
+        categories=hydrated,
+    )
+
+    pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
+    stamp = datetime.now().strftime("%m/%d")
+    resp = make_response(pdf_bytes)
+    resp.headers["Content-Type"] = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="PolicyCrush_Categories_{stamp}.pdf"'
     return resp

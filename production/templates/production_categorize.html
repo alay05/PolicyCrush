@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Production - Categorize (Staging)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a href="/" class="home-button">← Home</a>
+  <h1>Categorize — Staging</h1>
+  {% if categorize_ready %}
+    <p><small>Categories are built and up to date.</small></p>
+  {% else %}
+    <p><small>Categories not built yet or selections changed.</small></p>
+  {% endif %}
+  <p>Review your selections by source. When ready, build categories.</p>
+
+  {% for section, items in [
+    ('Gmail Items', gmail_items),
+    ('Daily News', news_items),
+    ('House Committees', house_items),
+    ('Senate Committees', senate_items)
+  ] %}
+    <div class="source">
+      <h2>{{ section }}</h2>
+      {% if items %}
+        {% for a in items %}
+          <div class="article" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span class="date">{{ a.date | pretty_date(a.tag == 'hearing') }}</span> -
+              <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p><em>No items selected.</em></p>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <div style="text-align:center; margin-top: 1.5rem;">
+    <a href="{{ url_for('production.production_senate') }}" style="text-decoration:none;">
+      <button type="button">← Back</button>
+    </a>
+
+    <form method="POST" action="{{ url_for('production.production_build_categories') }}" style="display:inline;">
+      <button type="submit" class="btn-primary">
+        {% if categorize_ready %}Rebuild Categories{% else %}Build Categories →{% endif %}
+      </button>
+    </form>
+
+    {% if categorize_ready %}
+      <a href="{{ url_for('production.production_categories') }}" style="text-decoration:none; margin-left:.5rem;">
+        <button type="button">View Categories</button>
+      </a>
+    {% endif %}
+  </div>
+</body>
+</html>

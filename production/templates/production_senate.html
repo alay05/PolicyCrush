@@ -86,7 +86,7 @@
               <div class="columns" style="justify-content: center;">
                 <div class="column" style="flex: 1 1 70%;">
                   {% for h in data.hearing %}
-                    <div class="hearing" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="article hearing" style="display:flex; justify-content:space-between; align-items:center;">
                       <label class="article-check" style="flex:1;">
                         <input type="checkbox" name="selected" value="{{ h.id }}" {% if h.id in prechecked %}checked{% endif %}>
                         <span><span class="date">{{ h.date | pretty_date(true) }}</span> - <a href="{{ h.url }}" target="_blank">{{ h.title }}</a></span>
