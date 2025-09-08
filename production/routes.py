@@ -641,88 +641,6 @@ def production_select_senate():
         return redirect(url_for("production.production_house"))
     return redirect(url_for("production.production_categorize"))
 
-@production.get("/review")
-def production_review():
-    _ensure_session_bucket()
-    cur = session.get("curation", {})
-    resp = make_response(render_template(
-        "production_review.html",
-        gmail_items=cur.get("gmail", []),
-        news_items=_rehydrate(cur.get("news"), NEWS_STORE),
-        house_items=_rehydrate(cur.get("house"), HOUSE_STORE),
-        senate_items=_rehydrate(cur.get("senate"), SENATE_STORE),
-    ))
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
-
-@production.post("/addevent")
-def production_addevent():
-    """Create an AddEvent calendar entry for a hearing URL."""
-    payload = request.get_json(silent=True) or {}
-    url = (payload.get("url") or "").strip()
-    tz = payload.get("timezone") or "America/New_York"
-    default_minutes = int(payload.get("duration_minutes") or 60)
-
-    if not url:
-        return jsonify({"ok": False, "error": "Missing 'url'."}), 400
-
-    try:
-        # 1) scrape + extract
-        page_text = fetch_hearing_html(url)
-        info_raw = extract_event_info(page_text)  # JSON string from your model
-        info = json.loads(info_raw)
-
-        # 2) combine date + time
-        #    Expecting "YYYY-MM-DD" and "HH:MM" (24h) per your prompt.
-        dt_start = datetime.strptime(
-            f"{info['date']} {info['time']}", "%Y-%m-%d %H:%M"
-        )
-        dt_end = dt_start + timedelta(minutes=default_minutes)
-
-        # 3) build AddEvent payload
-        addevent_data = {
-            "title": "[AUTO-TEST]" + info["title"],
-            "datetime_start": dt_start.strftime("%Y-%m-%d %H:%M"),
-            "datetime_end": dt_end.strftime("%Y-%m-%d %H:%M"),
-            "location": info.get("location") or "",
-            "description": url,               # keep the source link
-            "timezone": tz,                   # e.g., America/New_York
-        }
-
-        # 4) create event
-        res = create_event_addevent(addevent_data)
-        # AddEvent typically returns id + url (name may vary; handle both)
-        event_id = res.get("id") or res.get("event", {}).get("id")
-        event_url = res.get("url") or res.get("event", {}).get("url") or res.get("link")
-
-        return jsonify({"ok": True, "event_id": event_id, "event_url": event_url})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@production.get("/export-pdf")
-def production_export_pdf():
-    _ensure_session_bucket()
-    cur = session.get("curation", {})
-
-    html = render_template(
-        "review_pdf.html",
-        generated_at=datetime.now(),
-        gmail_items=cur.get("gmail", []),
-        news_items   = _rehydrate(cur.get("news", []), NEWS_STORE),
-        house_items  = _rehydrate(cur.get("house", []), HOUSE_STORE),
-        senate_items = _rehydrate(cur.get("senate", []), SENATE_STORE)
-    )
-
-    pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
-    stamp = datetime.now().strftime("%m/%d")
-    resp = make_response(pdf_bytes)
-    resp.headers["Content-Type"] = "application/pdf"
-    resp.headers["Content-Disposition"] = f'attachment; filename="PolicyCrush_{stamp}.pdf"'
-    return resp
-
 @production.get("/categorize")
 def production_categorize():
     """
@@ -870,3 +788,48 @@ def production_export_categories_pdf():
     resp.headers["Content-Type"] = "application/pdf"
     resp.headers["Content-Disposition"] = f'attachment; filename="PolicyCrush_Categories_{stamp}.pdf"'
     return resp
+
+
+@production.post("/addevent")
+def production_addevent():
+    """Create an AddEvent calendar entry for a hearing URL."""
+    payload = request.get_json(silent=True) or {}
+    url = (payload.get("url") or "").strip()
+    tz = payload.get("timezone") or "America/New_York"
+    default_minutes = int(payload.get("duration_minutes") or 60)
+
+    if not url:
+        return jsonify({"ok": False, "error": "Missing 'url'."}), 400
+
+    try:
+        # 1) scrape + extract
+        page_text = fetch_hearing_html(url)
+        info_raw = extract_event_info(page_text)  # JSON string from your model
+        info = json.loads(info_raw)
+
+        # 2) combine date + time
+        #    Expecting "YYYY-MM-DD" and "HH:MM" (24h) per your prompt.
+        dt_start = datetime.strptime(
+            f"{info['date']} {info['time']}", "%Y-%m-%d %H:%M"
+        )
+        dt_end = dt_start + timedelta(minutes=default_minutes)
+
+        # 3) build AddEvent payload
+        addevent_data = {
+            "title": "[AUTO-TEST]" + info["title"],
+            "datetime_start": dt_start.strftime("%Y-%m-%d %H:%M"),
+            "datetime_end": dt_end.strftime("%Y-%m-%d %H:%M"),
+            "location": info.get("location") or "",
+            "description": url,               # keep the source link
+            "timezone": tz,                   # e.g., America/New_York
+        }
+
+        # 4) create event
+        res = create_event_addevent(addevent_data)
+        # AddEvent typically returns id + url (name may vary; handle both)
+        event_id = res.get("id") or res.get("event", {}).get("id")
+        event_url = res.get("url") or res.get("event", {}).get("url") or res.get("link")
+
+        return jsonify({"ok": True, "event_id": event_id, "event_url": event_url})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
