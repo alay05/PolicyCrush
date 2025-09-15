@@ -34,8 +34,8 @@
     <p style="color: red;">{{ error }}</p>
   {% endif %}
 
-  {% if articles %}
-    <form method="POST" action="{{ url_for('production.production_select_news') }}" style="display:block; margin-top: 0.5rem;">
+  <form method="POST" action="{{ url_for('production.production_select_news') }}" style="display:block; margin-top: 0.5rem;">
+    {% if articles %} 
       {% for source, data in articles.items() %}
         <div class="source">
           <h2><a href="{{ data['url'] }}" target="_blank">{{ source }}</a></h2>
@@ -102,13 +102,14 @@
           <button type="button" class="add-row" data-target="news-manual-rows" data-template="news-manual-template">Add</button>
         </div>
       </div>
-
-      <div style="margin: 1rem 0; text-align:center;">
-        <button type="submit" name="action" value="back">← Back</button>
-        <button type="submit" name="action" value="next" class="btn-primary">Next → House</button>
-      </div>
-    </form>
-  {% endif %}
+    {% endif %}
+    <div style="position: fixed; bottom: 2rem; left: 2rem;">
+      <button type="submit" name="action" value="back">← Back</button>
+    </div>
+    <div style="position: fixed; bottom: 2rem; right: 2rem;">
+      <button type="submit" name="action" value="next" class="btn-primary">Next → House</button>
+    </div>
+   </form>
 
   <script>
     const dateInput = document.getElementById("start_date");

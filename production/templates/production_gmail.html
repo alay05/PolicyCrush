@@ -39,7 +39,7 @@
               <div class="manual-section" id="manual-{{ email.id }}">
                 <h3>Add Items</h3>
 
-                <div class="manual-grid rows" data-email-id="{{ email.id }}">
+                <div class="manual-grid-date rows" data-email-id="{{ email.id }}">
                   {% set rows = drafts.get(email.id) or [{}] %}
                   {% for row in rows %}
                     <div class="manual-row">
@@ -50,6 +50,10 @@
                       <div class="field">
                         <label>Date</label>
                         <input type="date" name="gmail_manual_date_{{ email.id }}[]" value="{{ row.date or '' }}">
+                      </div>
+                      <div class="field">
+                        <label>Time <span style="opacity:.6">(hearings)</span></label>
+                        <input type="time" name="gmail_manual_time_{{ email.id }}[]" value="{{ row.time|default('') }}">
                       </div>
                       <div class="field">
                         <label>URL</label>
@@ -72,6 +76,10 @@
                       <input type="date" name="gmail_manual_date_{{ email.id }}[]">
                     </div>
                     <div class="field">
+                      <label>Time <span style="opacity:.6">(hearings)</span></label>
+                      <input type="time" name="gmail_manual_time_{{ email.id }}[]">
+                    </div>
+                    <div class="field">
                       <label>URL</label>
                       <input type="url" name="gmail_manual_url_{{ email.id }}[]" placeholder="https://...">
                     </div>
@@ -91,8 +99,8 @@
       <p style="text-align: center;"><em>No unread emails.</em></p>
     {% endif %}
 
-    <div style="margin: 1rem 0; text-align:center;">
-      <button id="next-button" type="submit" name="action" value="next" class="btn-primary" {% if not articles %}hidden{% endif %}> Next → News </button>
+    <div style="position: fixed; bottom: 2rem; right: 2rem;">
+      <button id="next-button" type="submit" name="action" value="next" class="btn-primary"> Next → News </button>
     </div>
   </form>
 

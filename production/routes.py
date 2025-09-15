@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, make_response, jsonify
 from datetime import datetime, timedelta
 import json
+import re
 from weasyprint import HTML
 import hashlib
 
@@ -95,9 +96,19 @@ def _resolve_ref(ref, cur):
         return None
     return None
 
+def _has_time_component(ts: str) -> bool:
+    """
+    Returns True if the timestamp has a time component.
+    Accepts ISO-ish strings like YYYY-MM-DDTHH:MM (optionally with seconds/zone).
+    """
+    ts = (ts or "").strip()
+    # Look for 'T' followed by HH:MM (allow more after, e.g., seconds or TZ)
+    return bool(re.search(r"T\d{2}:\d{2}", ts))
+
 @production.get("/start")
 def production_start():
     return render_template("production_start.html")
+
 
 @production.post("/start")
 def production_start_action():
@@ -108,6 +119,7 @@ def production_start_action():
         _reset_all()
         return redirect(url_for("production.production_start"))
     return redirect(url_for("production.production_start"))
+
 
 @production.get("/gmail")
 def production_gmail():
@@ -168,10 +180,16 @@ def production_select_gmail():
             eid = a.get("origin_id", "")
             if not eid:
                 continue
+            ts = (a.get("date", "") or "").strip()  # stored as either YYYY-MM-DD or YYYY-MM-DDTHH:MM
+            if "T" in ts:
+                d_part, t_part = ts.split("T", 1)
+            else:
+                d_part, t_part = ts, ""
             grouped.setdefault(eid, []).append({
-                "title": a.get("title",""),
-                "date": a.get("date",""),
-                "url": a.get("url","")
+                "title": a.get("title", ""),
+                "date": d_part,
+                "time": t_part,      # <-- add this so the template can prefill the time input
+                "url": a.get("url", "")
             })
         return render_template(
             "production_gmail.html",
@@ -188,22 +206,32 @@ def production_select_gmail():
     for eid in email_ids:
         titles = request.form.getlist(f"gmail_manual_title_{eid}[]")
         dates  = request.form.getlist(f"gmail_manual_date_{eid}[]")
+        times  = request.form.getlist(f"gmail_manual_time_{eid}[]") 
         urls   = request.form.getlist(f"gmail_manual_url_{eid}[]")
-        n = max(len(titles), len(dates), len(urls))
+
+        n = max(len(titles), len(dates), len(times), len(urls))
         for i in range(n):
             title = (titles[i] if i < len(titles) else "").strip()
-            url   = (urls[i] if i < len(urls) else "").strip()
-            date  = (dates[i] if i < len(dates) else "").strip()
+            url   = (urls[i]   if i < len(urls)   else "").strip()
+            d_raw = (dates[i]  if i < len(dates)  else "").strip()    
+            t_raw = (times[i]  if i < len(times)  else "").strip()    
+
+            if d_raw:
+                timestamp = f"{d_raw}T{t_raw}" if t_raw else d_raw
+            else:
+                timestamp = ""
+
             if title and url:
                 manuals.append({
                     "id": f"g_manual_{eid}_{i+1}",
                     "title": title,
                     "url": url,
-                    "date": date,
+                    "date": timestamp,    
                     "manual": True,
                     "source": "gmail",
                     "origin_id": eid,
                 })
+
 
     session["curation"]["gmail"] = manuals
     session.modified = True
@@ -487,7 +515,6 @@ def production_select_house():
     return redirect(url_for("production.production_senate"))
 
 
-
 @production.get("/senate")
 def production_senate():
     _ensure_session_bucket()
@@ -527,6 +554,7 @@ def production_senate():
         action_was_load=bool(committees),
         manual_rows=manual_rows,
     )
+
 
 @production.post("/select-senate")
 def production_select_senate():
@@ -641,6 +669,7 @@ def production_select_senate():
         return redirect(url_for("production.production_house"))
     return redirect(url_for("production.production_categorize"))
 
+
 @production.get("/categorize")
 def production_categorize():
     """
@@ -679,12 +708,11 @@ def production_build_categories():
         for a in arr or []:
             all_items.append({
                 "id": a.get("id"),
-                "title": a.get("title",""),
-                "url": a.get("url",""),
-                "date": a.get("date",""),
-                "tag": a.get("tag",""),
+                "title": a.get("title", ""),
+                "url": a.get("url", ""),
+                "date": a.get("date", ""),     
                 "source": src,
-                "committee": a.get("committee",""),
+                "committee": a.get("committee", ""),
             })
     add("gmail", gmail_items)
     add("news", news_items)
@@ -693,11 +721,10 @@ def production_build_categories():
 
     current_sig = _signature(all_items)
     cache = session.get("categories_cache") or {}
-    if cache.get("sig") == current_sig and cache.get("categories"):
-        # Nothing changed; reuse existing categories
+    if cache.get("sig") == current_sig and cache.get("index"):
         session["categorize_ready"] = True
         session.modified = True
-        return redirect(url_for("production.production_categories"))
+        return redirect(url_for("production.production_review"))
 
     # …(existing code that builds `categories` via categorize_article)…
 
@@ -714,8 +741,8 @@ def production_build_categories():
     }
 
     for a in all_items:
-        is_hearing = (a.get("tag") == "hearing")
-        label = categorize_article(a.get("title",""), is_hearing=is_hearing)
+        is_hearing = _has_time_component(a.get("date", ""))
+        label = categorize_article(a.get("title", ""), is_hearing=is_hearing)
         if label not in categories_index:
             label = "Quality and Innovation"
         categories_index[label].append(_ref(a, a.get("source")))
@@ -728,20 +755,21 @@ def production_build_categories():
     }
     session["categorize_ready"] = True
     session.modified = True
-    return redirect(url_for("production.production_categories"))
+    return redirect(url_for("production.production_review"))
 
 
-@production.get("/categories")
-def production_categories():
+@production.get("/review")
+def production_review():
     _ensure_session_bucket()
     cache = session.get("categories_cache")
-    if not cache or not cache.get("index"):
+
+    # Redirect only if the "index" key is MISSING (not if present-but-empty)
+    if not isinstance(cache, dict) or "index" not in cache:
         return redirect(url_for("production.production_categorize"))
 
     cur = session.get("curation", {})
-    index = cache["index"]
+    index = cache.get("index") or {}
 
-    # Build a render-friendly dict with full items (not stored in session)
     hydrated = {}
     for label, refs in index.items():
         items = []
@@ -752,7 +780,7 @@ def production_categories():
         hydrated[label] = items
 
     return render_template(
-        "production_categories.html",
+        "production_review.html",
         categories=hydrated,
         built_at=cache.get("built_at"),
     )
@@ -777,7 +805,7 @@ def production_export_categories_pdf():
         hydrated[label] = items
 
     html = render_template(
-        "categories_pdf.html",
+        "pdf.html",
         generated_at=datetime.now(),
         categories=hydrated,
     )

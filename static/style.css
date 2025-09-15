@@ -370,7 +370,14 @@ a:hover {
 
 .manual-grid {
   display: grid;
-  grid-template-columns: 1fr 160px 1fr auto; /* Title | Date | URL | Delete */
+  grid-template-columns: 1fr 160px 1fr auto; 
+  gap: 0.5rem 0.6rem;
+  align-items: end;
+}
+
+.manual-grid-date {
+  display: grid;
+  grid-template-columns: 1.5fr 150px 130px 2fr 40px;
   gap: 0.5rem 0.6rem;
   align-items: end;
 }
@@ -394,7 +401,8 @@ a:hover {
 
 .manual-row input[type="text"],
 .manual-row input[type="url"],
-.manual-row input[type="date"] {
+.manual-row input[type="date"],
+.manual-row input[type="time"] {
   width: 100%;
   padding: 0.55rem 0.65rem;
   border: 1px solid #cbd5e1;

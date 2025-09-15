@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 # log in - stays logged in with token.pickle
 def authenticate():
@@ -51,6 +51,13 @@ def extract_html_from_email(service, msg_id):
     msg_str = base64.urlsafe_b64decode(msg['raw'].encode('ASCII'))
     mime_msg = email.message_from_bytes(msg_str)
 
+    # mark as read
+    service.users().messages().modify(
+        userId='me',
+        id=msg_id,
+        body={'removeLabelIds': ['UNREAD']}
+    ).execute()
+    
     # subject
     raw_subject = mime_msg.get("Subject", "(No Subject)")
     decoded_parts = decode_header(raw_subject)

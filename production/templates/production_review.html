@@ -19,15 +19,18 @@
         <h2>{{ label }}</h2>
         {% if items %}
           {% for a in items %}
+            {# hearing = has time in timestamp like YYYY-MM-DDTHH:MM #}
+            {% set is_hearing = 'T' in (a.date or '') %}
+
             <div class="article" style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <span class="date">{{ a.date | pretty_date(a.tag == 'hearing') }}</span> -
+                <span class="date">{{ a.date | pretty_date(is_hearing) }}</span> -
                 <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
                 {% if a.committee %}<span class="committee">&nbsp;• {{ a.committee }}</span>{% endif %}
                 <span class="origin">&nbsp;• {{ a.source|capitalize }}</span>
               </div>
 
-              {% if a.tag == 'hearing' %}
+              {% if is_hearing %}
                 <div class="addevent-controls">
                   <button
                     type="button"

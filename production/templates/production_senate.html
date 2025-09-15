@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Production - House</title>
+  <title>Production - Senate</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body>
   <a href="/" class="home-button">← Home</a>
-  <h1>House Committees</h1>
+  <h1>Senate Committees</h1>
 
-  <form method="POST" action="{{ url_for('production.production_select_house') }}" style="display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
+  <form method="POST" action="{{ url_for('production.production_select_senate') }}" style="display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
     <label for="start_date">Earliest Date:</label>
     <input type="date" name="start_date" id="start_date" value="{{ input_date }}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
 
@@ -34,11 +34,11 @@
     <p style="color: red;">{{ error }}</p>
   {% endif %}
 
-  <form method="POST" action="{{ url_for('production.production_select_house') }}" style="display:block; margin-top:.5rem;">
+  <form method="POST" action="{{ url_for('production.production_select_senate') }}" style="display:block; margin-top:.5rem;">
     {% if committees %}
       {% for committee, data in committees.items() %}
         <div class="committee">
-          <h2>{{ committee }}</h2>
+          <h2><a href="{{ data.url }}" target="_blank">{{ committee }}</a></h2>
 
           <div class="columns">
             <div class="column">
@@ -79,52 +79,75 @@
               {% endif %}
             </div>
           </div>
+
+          <div class="hearings-block">
+            <h3>Hearings</h3>
+            {% if data.hearing %}
+              <div class="columns" style="justify-content: center;">
+                <div class="column" style="flex: 1 1 70%;">
+                  {% for h in data.hearing %}
+                    <div class="article hearing" style="display:flex; justify-content:space-between; align-items:center;">
+                      <label class="article-check" style="flex:1;">
+                        <input type="checkbox" name="selected" value="{{ h.id }}" {% if h.id in prechecked %}checked{% endif %}>
+                        <span><span class="date">{{ h.date | pretty_date(true) }}</span> - <a href="{{ h.url }}" target="_blank">{{ h.title }}</a></span>
+                      </label>
+                      {% if h.suggestion %}
+                        <span class="suggestion-badge {{ h.suggestion | lower }} ml-5">{{ h.suggestion }}</span>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              <p><em>No hearings found.</em></p>
+            {% endif %}
+          </div>
         </div>
       {% endfor %}
 
       <div class="manual-section" style="margin-top: 1.25rem;">
         <h3>Add Items</h3>
-        <div class="manual-grid rows" id="house-manual-rows">
+        <div class="manual-grid rows" id="senate-manual-rows">
           {% set rows = manual_rows or [{}] %}
           {% for row in rows %}
             <div class="manual-row">
               <div class="field">
                 <label>Title</label>
-                <input type="text" name="house_manual_title[]" value="{{ row.title or '' }}" placeholder="Headline">
+                <input type="text" name="senate_manual_title[]" value="{{ row.title or '' }}" placeholder="Headline">
               </div>
               <div class="field">
                 <label>Date</label>
-                <input type="date" name="house_manual_date[]" value="{{ row.date or '' }}">
+                <input type="date" name="senate_manual_date[]" value="{{ row.date or '' }}">
               </div>
               <div class="field">
                 <label>URL</label>
-                <input type="url" name="house_manual_url[]" value="{{ row.url or '' }}" placeholder="https://...">
+                <input type="url" name="senate_manual_url[]" value="{{ row.url or '' }}" placeholder="https://...">
               </div>
               <button type="button" class="delete-row">✕</button>
             </div>
           {% endfor %}
         </div>
 
-        <template id="house-manual-template">
+        <template id="senate-manual-template">
           <div class="manual-row">
             <div class="field">
               <label>Title</label>
-              <input type="text" name="house_manual_title[]" placeholder="Headline">
+              <input type="text" name="senate_manual_title[]" placeholder="Headline">
             </div>
             <div class="field">
               <label>Date</label>
-              <input type="date" name="house_manual_date[]">
+              <input type="date" name="senate_manual_date[]">
             </div>
             <div class="field">
               <label>URL</label>
-              <input type="url" name="house_manual_url[]" placeholder="https://...">
+              <input type="url" name="senate_manual_url[]" placeholder="https://...">
             </div>
             <button type="button" class="delete-row">✕</button>
           </div>
         </template>
 
         <div class="manual-actions">
-          <button type="button" class="add-row" data-target="house-manual-rows" data-template="house-manual-template">Add</button>
+          <button type="button" class="add-row" data-target="senate-manual-rows" data-template="senate-manual-template">Add</button>
         </div>
       </div>
     {% endif %}
@@ -132,14 +155,14 @@
       <button type="submit" name="action" value="back">← Back</button>
     </div>
     <div style="position: fixed; bottom: 2rem; right: 2rem;">
-      <button type="submit" name="action" value="next" class="btn-primary">Next → Senate</button>
+      <button type="submit" name="action" value="next" class="btn-primary">Next → Review</button>
     </div>
   </form>
 
   <script>
     const dateInput = document.getElementById("start_date");
     const submitBtn = document.getElementById("submit-btn");
-    const loadForm = document.querySelector("form[action='{{ url_for('production.production_select_house') }}']");
+    const loadForm = document.querySelector("form[action='{{ url_for('production.production_select_senate') }}']");
     const loadingBar = document.getElementById("loading-bar-container");
 
     function toggleSubmit() {
