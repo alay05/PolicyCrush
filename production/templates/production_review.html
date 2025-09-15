@@ -19,25 +19,87 @@
           {% for a in items %}
             {% set is_hearing = 'T' in (a.date or '') %}
             <div class="article"
-                data-id="{{ a._ref }}"
-                style="display:flex; justify-content:space-between; align-items:center;">
+              data-id="{{ a._ref }}"
+              data-src="{{ (a._ref or {}).get('source') }}"
+              data-rid="{{ a.id }}"
+              style="display:flex; justify-content:space-between; align-items:center;">
+
+              <!-- drag handle -->
               <div style="cursor:grab; padding-right:.5rem; user-select:none; font-size:1.5rem;">☰</div>
-              <div style="flex:1;">
-                <span class="date">{{ a.date | pretty_date(is_hearing) }}</span> -
-                <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+
+              <!-- title block with inline editor -->
+              <div style="flex:1; display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; min-width:0;">
+                <!-- keep date + dash + title inline; allow wrapping -->
+                <span style="display:inline; white-space:normal; overflow-wrap:anywhere; min-width:0;">
+                  <span class="date">{{ a.date | pretty_date(is_hearing) }}</span> -
+                  <a class="article-title"
+                    href="{{ a.url }}"
+                    target="_blank"
+                    style="display:inline !important;">
+                    {{ a.title }}
+                  </a>
+                </span>
+
+                <!-- hidden editor controls -->
+                <input class="edit-input"
+                      type="text"
+                      value="{{ a.title }}"
+                      style="display:none; flex:1; min-width:260px; padding:.3rem .45rem; border:1px solid #d1d5db; border-radius:6px;">
+                <button type="button" class="save-title-btn"
+                        style="display:none; padding:.3rem .55rem; border:1px solid #d1d5db; border-radius:6px; background:#e8f5e9; cursor:pointer;">
+                  Save
+                </button>
+                <button type="button" class="cancel-title-btn"
+                        style="display:none; padding:.3rem .55rem; border:1px solid #d1d5db; border-radius:6px; background:#f8fafc; cursor:pointer; margin-right:.5rem;">
+                  Cancel
+                </button>
+
+                <!-- SUBLINKS LIST (shown if present) -->
+                <div class="sublinks-wrap" style="width:100%;">
+                  {% if a._sublinks and a._sublinks|length %}
+                    <ul class="sublinks-list" style="margin:.35rem 0 0 1.6rem; padding:0; list-style:none; width:100%;">
+                      {% for sl in a._sublinks %}
+                        <li style="margin:.2rem 0;">
+                          <span style="font-weight:600; color:#374151;">{{ sl.heading }}:</span>
+                          <a href="{{ sl.url }}" target="_blank" style="margin-left:.25rem; color:#1d4ed8;">{{ sl.url }}</a>
+                          <button type="button" class="sublink-remove-btn" data-index="{{ loop.index0 }}" title="Remove sublink"
+                                  style="margin-left:.35rem; border:0; background:transparent; cursor:pointer;">✕</button>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                </div>
+
+                <!-- SUBLINK EDITOR (hidden until opened) -->
+                <div class="sublink-editor" style="display:none; margin:.35rem 0 0 1.6rem; width:100%;">
+                  <input class="sublink-heading" type="text" placeholder="Heading (e.g., Background)"
+                         style="padding:.3rem .45rem; border:1px solid #d1d5db; border-radius:6px; margin-right:.35rem;">
+                  <input class="sublink-url" type="url" placeholder="https://…"
+                         style="padding:.3rem .45rem; border:1px solid #d1d5db; border-radius:6px; min-width:260px; margin-right:.35rem;">
+                  <button type="button" class="sublink-save-btn">Add</button>
+                  <button type="button" class="sublink-cancel-btn" style="margin-left:.25rem;">Cancel</button>
+                </div>
               </div>
 
-              {% if is_hearing %}
-                <div class="addevent-controls">
-                  <button type="button"
-                          class="addevent-btn"
-                          data-url="{{ a.url }}"
-                          data-id="{{ a._ref }}">
-                    <span class="btn-label">AddEvent</span>
-                    <span class="spinner" aria-hidden="true"></span>
-                  </button>
-                </div>
-              {% endif %}
+              <!-- actions -->
+              <div style="display:flex; align-items:center; gap:.35rem;">
+                <!-- edit (pen) button — uses your style.css -->
+                <button type="button" class="edit-title-btn" aria-label="Rename title" title="Rename title">✎</button>
+                <!-- add sublink button -->
+                <button type="button" class="add-sublink-btn" title="Add sublink">＋</button>
+
+                {% if is_hearing %}
+                  <div class="addevent-controls">
+                    <button type="button"
+                            class="addevent-btn"
+                            data-url="{{ a.url }}"
+                            data-id="{{ a._ref }}">
+                      <span class="btn-label">AddEvent</span>
+                      <span class="spinner" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                {% endif %}
+              </div>
             </div>
           {% endfor %}
         </div>
@@ -78,6 +140,12 @@
     const url = btn.dataset.url;
     if (!url || btn.disabled) return;
 
+    // NEW: grab edited title and identity
+    const card  = btn.closest('.article');
+    const src   = card?.dataset.src || '';
+    const rid   = card?.dataset.rid || '';
+    const title = (card?.querySelector('.article-title')?.textContent || '').trim();
+
     btn.classList.add('loading');
     btn.disabled = true;
 
@@ -85,7 +153,8 @@
       const res = await fetch("{{ url_for('production.production_addevent') }}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
+        // NEW: include title + source/id so backend can honor overrides
+        body: JSON.stringify({ url, source: src, id: rid, title })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Failed to create event");
@@ -107,63 +176,272 @@
 
   // ===========================================
   // 2) Drag & Drop between category lists
-  //    (requires .source[data-category] and
-  //     .article[data-id] which you already have)
   // ===========================================
   const lists = Array.from(document.querySelectorAll('.source .article-list'));
-
   lists.forEach(listEl => {
     new Sortable(listEl, {
-      group: 'categories',           // allow cross-list moves
+      group: 'categories',
       animation: 150,
       handle: 'div[style*="cursor:grab"]',
       ghostClass: 'dragging',
-      filter: 'a, button, .addevent-btn',
-      preventOnFilter: true,
-      onAdd: persistMove,            // moved to a different category
-      onUpdate: persistMove,         // reordered within a category
+      // don't include input/textarea here
+      filter: 'a, .addevent-btn, .edit-title-btn, .add-sublink-btn, .sublink-save-btn, .sublink-cancel-btn, .sublink-remove-btn',
+      preventOnFilter: false,  // allow focusing/clicking filtered elements
+      onAdd: persistMove,
+      onUpdate: persistMove,
     });
   });
 
-  /**
-   * Persist a move to the backend; rollback on failure.
-   */
+  // =========================
+  // 3) Inline rename
+  // =========================
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.edit-title-btn');
+    if (!btn) return;
+    const card = btn.closest('.article');
+    const link = card.querySelector('.article-title');
+    const input = card.querySelector('.edit-input');
+    const save  = card.querySelector('.save-title-btn');
+    const cancel= card.querySelector('.cancel-title-btn');
+
+    link.style.display = 'none';
+    input.style.display = 'inline-block';
+    save.style.display  = 'inline-block';
+    cancel.style.display= 'inline-block';
+
+    input.value = (link.textContent || '').trim();
+    input.focus();
+    input.select();
+  });
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.save-title-btn');
+    if (!btn) return;
+    const card = btn.closest('.article');
+    await saveTitleInline(card);
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cancel-title-btn');
+    if (!btn) return;
+    const card = btn.closest('.article');
+    exitEdit(card, /*restore*/ true);
+  });
+
+  document.addEventListener('keydown', async (e) => {
+    if (!e.target.classList || !e.target.classList.contains('edit-input')) return;
+    const card = e.target.closest('.article');
+    if (e.key === 'Enter') { e.preventDefault(); await saveTitleInline(card); }
+    if (e.key === 'Escape') { e.preventDefault(); exitEdit(card, true); }
+  });
+
+  async function saveTitleInline(card) {
+    const src   = card.dataset.src || '';
+    const rid   = card.dataset.rid || '';
+    const link  = card.querySelector('.article-title');
+    const input = card.querySelector('.edit-input');
+    const save  = card.querySelector('.save-title-btn');
+    const cancel= card.querySelector('.cancel-title-btn');
+
+    const current  = (link.textContent || '').trim();
+    const newTitle = (input.value || '').trim();
+    if (!src || !rid || !newTitle || newTitle === current) { exitEdit(card, true); return; }
+
+    save.disabled = true; cancel.disabled = true;
+    try {
+      const res = await fetch("{{ url_for('production.production_rename_article') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: src, id: rid, title: newTitle })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      link.textContent = newTitle;
+      exitEdit(card, /*restore*/ false);
+    } catch (err) {
+      console.error(err);
+      alert(`Couldn't rename: ${err.message}`);
+      exitEdit(card, true);
+    } finally {
+      save.disabled = false; cancel.disabled = false;
+    }
+  }
+
+  function exitEdit(card, restore) {
+    const link  = card.querySelector('.article-title');
+    const input = card.querySelector('.edit-input');
+    const save  = card.querySelector('.save-title-btn');
+    const cancel= card.querySelector('.cancel-title-btn');
+    input.style.display = 'none';
+    save.style.display  = 'none';
+    cancel.style.display= 'none';
+    link.style.display  = 'inline';
+    if (restore) input.value = (link.textContent || '').trim();
+  }
+
+  // =========================
+  // 4) Sublinks — add / cancel / save / remove
+  // =========================
+  // open editor
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.add-sublink-btn');
+    if (!btn) return;
+    const card = btn.closest('.article');
+    const ed = card.querySelector('.sublink-editor');
+    ed.style.display = 'block';
+    ed.querySelector('.sublink-heading').focus();
+  });
+
+  // cancel editor
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sublink-cancel-btn');
+    if (!btn) return;
+    const ed = btn.closest('.sublink-editor');
+    ed.style.display = 'none';
+    ed.querySelector('.sublink-heading').value = '';
+    ed.querySelector('.sublink-url').value = '';
+  });
+
+  // save sublink
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.sublink-save-btn');
+    if (!btn) return;
+
+    const card = btn.closest('.article');
+    const src = card.dataset.src || '';
+    const rid = card.dataset.rid || '';
+    const ed = card.querySelector('.sublink-editor');
+    const heading = ed.querySelector('.sublink-heading').value.trim();
+    const url = ed.querySelector('.sublink-url').value.trim();
+    if (!src || !rid || !heading || !url) return;
+
+    btn.disabled = true;
+    try {
+      const res = await fetch("{{ url_for('production.production_sublink_add') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: src, id: rid, heading, url })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      // Always render inside the dedicated wrapper; create list if missing
+      const wrap = card.querySelector('.sublinks-wrap');
+      let ul = wrap.querySelector('.sublinks-list');
+      if (!ul) {
+        ul = document.createElement('ul');
+        ul.className = 'sublinks-list';
+        ul.style.cssText = 'margin:.35rem 0 0 1.6rem; padding:0; list-style:none; width:100%;';
+        wrap.appendChild(ul);
+      }
+
+      // rebuild list safely
+      ul.textContent = '';
+      (data.sublinks || []).forEach((sl, i) => {
+        const li = document.createElement('li');
+        li.style.margin = '.2rem 0';
+
+        const h = document.createElement('span');
+        h.style.fontWeight = '600';
+        h.style.color = '#374151';
+        h.textContent = sl.heading + ':';  // text, not HTML
+
+        const a = document.createElement('a');
+        a.target = '_blank';
+        a.style.marginLeft = '.25rem';
+        a.style.color = '#1d4ed8';
+        a.href = sl.url;
+        a.textContent = sl.url;
+
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'sublink-remove-btn';
+        x.title = 'Remove sublink';
+        x.dataset.index = String(i);
+        x.style.cssText = 'margin-left:.35rem; border:0; background:transparent; cursor:pointer;';
+        x.textContent = '✕';
+
+        li.appendChild(h);
+        li.appendChild(a);
+        li.appendChild(x);
+        ul.appendChild(li);
+      });
+
+      // reset editor
+      ed.style.display = 'none';
+      ed.querySelector('.sublink-heading').value = '';
+      ed.querySelector('.sublink-url').value = '';
+    } catch (err) {
+      console.error(err);
+      alert(`Couldn't add sublink: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // remove sublink
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.sublink-remove-btn');
+    if (!btn) return;
+
+    const card = btn.closest('.article');
+    const src = card.dataset.src || '';
+    const rid = card.dataset.rid || '';   // <-- fixed
+    const idx = parseInt(btn.dataset.index, 10);
+
+    try {
+      const res = await fetch("{{ url_for('production.production_sublink_remove') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: src, id: rid, index: idx })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      const wrap = card.querySelector('.sublinks-wrap');
+      const ul = wrap.querySelector('.sublinks-list');
+      if (!ul) return;
+
+      if (idx >= 0 && idx < ul.children.length) {
+        ul.children[idx].remove();
+        Array.from(ul.children).forEach((li, i) => {
+          const b = li.querySelector('.sublink-remove-btn');
+          if (b) b.dataset.index = i;
+        });
+        if (!ul.children.length) ul.remove();
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`Couldn't remove sublink: ${err.message}`);
+    }
+  });
+
+  // =========================
+  // 5) Persist move (unchanged)
+  // =========================
   async function persistMove(evt) {
-    const item = evt.item;                 // moved .article
+    const item = evt.item;
     const toList = evt.to;
     const fromList = evt.from;
     const toCategory = toList.closest('.source')?.dataset.category || '';
     const fromCategory = fromList.closest('.source')?.dataset.category || '';
     const id = item.dataset.id;
-
-    // 0-based index in destination list
     const newIndex = Array.prototype.indexOf.call(toList.children, item);
-
     if (!id || !toCategory || newIndex < 0) return;
 
     try {
       const res = await fetch("{{ url_for('production.production_move_article') }}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id,
-          from_category: fromCategory,
-          to_category: toCategory,
-          new_index: newIndex
-        })
+        body: JSON.stringify({ id, from_category: fromCategory, to_category: toCategory, new_index: newIndex })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Move failed");
-      // success: DOM already updated by Sortable
     } catch (err) {
       console.error(err);
-      // rollback UI to old position
       if (fromList && item) {
-        if (evt.oldIndex >= fromList.children.length) {
-          fromList.appendChild(item);
-        } else {
-          fromList.insertBefore(item, fromList.children[evt.oldIndex]);
-        }
+        if (evt.oldIndex >= fromList.children.length) fromList.appendChild(item);
+        else fromList.insertBefore(item, fromList.children[evt.oldIndex]);
       }
       alert("Couldn't save that move. Please try again.");
     }

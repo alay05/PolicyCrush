@@ -40,6 +40,8 @@ def _ensure_session_bucket():
         session["categorize_ready"] = False
     if "categories_cache" not in session:
         session["categories_cache"] = None
+    if "sublinks" not in session:
+        session["sublinks"] = {}
 
 def _rehydrate(items, store):
     resolved = []
@@ -769,6 +771,8 @@ def production_review():
 
     cur = session.get("curation", {})
     index = cache.get("index") or {}
+    overrides = session.get("title_overrides") or {}
+    sublinks_map = session.get("sublinks") or {}  # <-- NEW: sublinks storage
 
     # Hydrate
     hydrated = {}
@@ -776,16 +780,30 @@ def production_review():
         items = []
         for ref in refs or []:
             resolved = _resolve_ref(ref, cur)
-            if resolved:
-                if not isinstance(resolved, dict):
-                    resolved = dict(resolved)
-                resolved["_ref"] = ref
-                items.append(resolved)
+            if not resolved:
+                continue
+
+            # copy so we don't mutate store objects when overriding
+            item = dict(resolved) if isinstance(resolved, dict) else dict(resolved)
+            item["_ref"] = ref
+            src = (ref or {}).get("source")
+            rid = item.get("id")
+            item["_src"] = src  # <-- NEW: keep source handy for the template/JS
+
+            # apply title override if present (keyed by "source:id")
+            if src and rid:
+                key = f"{src}:{rid}"
+                if key in overrides:
+                    item["title"] = overrides[key]
+                # attach sublinks for UI (list of {"heading","url"})
+                item["_sublinks"] = list(sublinks_map.get(key, []))  # <-- NEW
+
+            items.append(item)
         hydrated[label] = items
 
     # ---- Reorder just-in-time (no session changes, no template changes) ----
     preferred = [SPECIAL_CALENDAR, *CATEGORIES]  # Events first, then your fixed list
-    ordered = OrderedDict((lab, hydrated[lab]) for lab in preferred if lab in hydrated)
+    ordered = OrderedDict((lab, hydrated.get(lab, [])) for lab in preferred if lab in hydrated)
     # append any unexpected categories at the end (robust to future additions)
     for lab, items in hydrated.items():
         if lab not in ordered:
@@ -793,7 +811,7 @@ def production_review():
 
     return render_template(
         "production_review.html",
-        categories=ordered,                    
+        categories=ordered,
         built_at=cache.get("built_at"),
     )
 
@@ -861,6 +879,24 @@ def production_move_article():
     return jsonify(ok=True)
 
 
+@production.post("/rename-article")
+def production_rename_article():
+    payload = request.get_json(silent=True) or {}
+    src = (payload.get("source") or "").strip()
+    rid = (payload.get("id") or "").strip()
+    title = (payload.get("title") or "").strip()
+
+    if not src or not rid or not title:
+        return jsonify(ok=False, error="Missing source/id/title"), 400
+
+    _ensure_session_bucket()
+    overrides = session.get("title_overrides") or {}
+    overrides[f"{src}:{rid}"] = title
+    session["title_overrides"] = overrides
+    session.modified = True
+    return jsonify(ok=True)
+
+
 @production.get("/export-categories-pdf")
 def production_export_categories_pdf():
     _ensure_session_bucket()
@@ -870,18 +906,32 @@ def production_export_categories_pdf():
         return redirect(url_for("production.production_categorize"))
 
     cur = session.get("curation", {})
+    overrides    = session.get("title_overrides") or {}   # renamed titles
+    sublinks_map = session.get("sublinks") or {}          # { "source:id": [ {heading,url}, ... ] }
+
+    # Hydrate with overrides + sublinks
     hydrated = {}
     for label, refs in index.items():
         items = []
         for ref in refs or []:
             resolved = _resolve_ref(ref, cur)
-            if resolved:
-                items.append(resolved)
+            if not resolved:
+                continue
+
+            item = dict(resolved) if isinstance(resolved, dict) else dict(resolved)
+            src = (ref or {}).get("source")
+            rid = item.get("id")
+            if src and rid:
+                key = f"{src}:{rid}"
+                if key in overrides:
+                    item["title"] = overrides[key]
+                item["sublinks"] = list(sublinks_map.get(key, []))
+            items.append(item)
         hydrated[label] = items
 
-    # ensure same order as review
+    # ---- Order categories: Events first, then fixed list; append any extras
     preferred = [SPECIAL_CALENDAR, *CATEGORIES]
-    ordered = {lab: hydrated[lab] for lab in preferred if lab in hydrated}
+    ordered = OrderedDict((lab, hydrated.get(lab, [])) for lab in preferred if lab in hydrated)
     for lab, items in hydrated.items():
         if lab not in ordered:
             ordered[lab] = items
@@ -889,7 +939,7 @@ def production_export_categories_pdf():
     html = render_template(
         "pdf.html",
         generated_at=datetime.now(),
-        categories=ordered,          # <— pass in ordered mapping
+        categories=ordered,   # pass ordered mapping to the template
     )
 
     pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
@@ -900,33 +950,125 @@ def production_export_categories_pdf():
     return resp
 
 
+@production.post("/sublink/add")
+def production_sublink_add():
+    """
+    Body: { source: str, id: str, heading: str, url: str }
+    Appends a sublink to session['sublinks'][f"{source}:{id}"].
+    """
+    payload = request.get_json(silent=True) or {}
+    src = (payload.get("source") or "").strip()
+    rid = (payload.get("id") or "").strip()
+    heading = (payload.get("heading") or "").strip()
+    url = (payload.get("url") or "").strip()
+
+    if not src or not rid or not heading or not url:
+        return jsonify(ok=False, error="Missing source/id/heading/url"), 400
+
+    _ensure_session_bucket()
+    sl = session.get("sublinks") or {}
+    key = f"{src}:{rid}"
+    lst = sl.get(key) or []
+    lst.append({"heading": heading, "url": url})
+    sl[key] = lst
+    session["sublinks"] = sl
+    session.modified = True
+    return jsonify(ok=True, sublinks=lst)
+
+
+@production.post("/sublink/remove")
+def production_sublink_remove():
+    """
+    Body: { source: str, id: str, index: int }
+    Removes sublink at index.
+    """
+    payload = request.get_json(silent=True) or {}
+    src = (payload.get("source") or "").strip()
+    rid = (payload.get("id") or "").strip()
+    idx = payload.get("index")
+    if not src or not rid or idx is None:
+        return jsonify(ok=False, error="Missing source/id/index"), 400
+
+    _ensure_session_bucket()
+    sl = session.get("sublinks") or {}
+    key = f"{src}:{rid}"
+    lst = sl.get(key) or []
+    if not (0 <= int(idx) < len(lst)):
+        return jsonify(ok=False, error="Index out of range"), 400
+    lst.pop(int(idx))
+    sl[key] = lst
+    session["sublinks"] = sl
+    session.modified = True
+    return jsonify(ok=True, sublinks=lst)
+
+
 @production.post("/addevent")
 def production_addevent():
-    """Create an AddEvent calendar entry for a hearing URL."""
+    """Create an AddEvent calendar entry for a hearing URL, honoring title overrides when available."""
     payload = request.get_json(silent=True) or {}
     url = (payload.get("url") or "").strip()
     tz = payload.get("timezone") or "America/New_York"
     default_minutes = int(payload.get("duration_minutes") or 60)
 
+    # Optional hints (won't be required; we can infer from URL)
+    title_hint = (payload.get("title") or "").strip()
+    src_hint = (payload.get("source") or "").strip()
+    rid_hint = (payload.get("id") or "").strip()
+
     if not url:
         return jsonify({"ok": False, "error": "Missing 'url'."}), 400
 
+    # Try to resolve a title override from session
+    override_title = None
     try:
-        # 1) scrape + extract
+        overrides = session.get("title_overrides") or {}
+
+        # 1) If source/id are provided (optional), try that key first
+        if src_hint and rid_hint:
+            override_title = overrides.get(f"{src_hint}:{rid_hint}")
+
+        # 2) If not found yet, try to infer the (source, id) by matching URL
+        if not override_title:
+            cur = session.get("curation", {}) or {}
+
+            # Gmail manual entries live in session
+            for g in cur.get("gmail") or []:
+                if (g.get("url") or "").strip() == url:
+                    override_title = overrides.get(f"gmail:{g.get('id')}")
+                    if override_title:
+                        break
+
+            # News/House/Senate live in the in-memory stores
+            if not override_title:
+                for src_name, store in (("news", NEWS_STORE), ("house", HOUSE_STORE), ("senate", SENATE_STORE)):
+                    for item_id, item in store.items():
+                        if (item.get("url") or "").strip() == url:
+                            override_title = overrides.get(f"{src_name}:{item_id}")
+                            if override_title:
+                                break
+                    if override_title:
+                        break
+    except Exception:
+        # Non-fatal: just ignore and fallback
+        override_title = None
+
+    try:
+        # 1) scrape + extract canonical event fields
         page_text = fetch_hearing_html(url)
         info_raw = extract_event_info(page_text)  # JSON string from your model
         info = json.loads(info_raw)
 
-        # 2) combine date + time
-        #    Expecting "YYYY-MM-DD" and "HH:MM" (24h) per your prompt.
-        dt_start = datetime.strptime(
-            f"{info['date']} {info['time']}", "%Y-%m-%d %H:%M"
-        )
+        # 2) combine date + time  (expect "YYYY-MM-DD" and "HH:MM")
+        dt_start = datetime.strptime(f"{info['date']} {info['time']}", "%Y-%m-%d %H:%M")
         dt_end = dt_start + timedelta(minutes=default_minutes)
 
-        # 3) build AddEvent payload
+        # 3) choose best title: override > title_hint from client > scraped
+        base_title = info.get("title") or ""
+        final_title = (override_title or title_hint or base_title).strip()
+
+        # 4) build AddEvent payload (unchanged fields preserved)
         addevent_data = {
-            "title": "[AUTO-TEST]" + info["title"],
+            "title": "[AUTO-TEST]" + final_title,
             "datetime_start": dt_start.strftime("%Y-%m-%d %H:%M"),
             "datetime_end": dt_end.strftime("%Y-%m-%d %H:%M"),
             "location": info.get("location") or "",
@@ -934,9 +1076,8 @@ def production_addevent():
             "timezone": tz,                   # e.g., America/New_York
         }
 
-        # 4) create event
+        # 5) create event
         res = create_event_addevent(addevent_data)
-        # AddEvent typically returns id + url (name may vary; handle both)
         event_id = res.get("id") or res.get("event", {}).get("id")
         event_url = res.get("url") or res.get("event", {}).get("url") or res.get("link")
 

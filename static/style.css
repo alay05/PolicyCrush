@@ -483,6 +483,32 @@ input.article-check[type="checkbox"] {
   box-shadow: 0 3px 10px rgba(0,0,0,0.06);
 }
 
+.edit-title-btn {
+  background-color: #e0e0e0;
+  border: 1px solid #e2e8f0;  
+  border-radius: 6px;
+  padding: 0.5rem 0.5rem;
+  font-size: .95rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #334155;              
+}
+.edit-title-btn:hover {
+  background: #aaaaaa;         
+  border-color: #cbd5e1;      
+}
+
+.add-sublink-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 6px;
+  padding: .2rem .45rem;
+  cursor: pointer;
+}
+.add-sublink-btn:hover { background:#f8fafc; }
+.sublinks-list a { color:#1d4ed8; }
+.sublinks-list:empty { display: none; margin: 0 !important; }
+
 
 
 /* AddEvent Button */

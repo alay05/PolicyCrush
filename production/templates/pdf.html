@@ -40,6 +40,12 @@
     a { color:#1d4ed8; text-decoration: none; }
     .url { color:#6b7280; font-size: 9.5pt; word-break: break-all; }
 
+    /* Sublinks */
+    ul.sublinks { margin: 6px 0 0 0; padding-left: 14px; }
+    ul.sublinks li { margin: 2px 0; break-inside: avoid; }
+    ul.sublinks .h { font-weight: 700; color:#374151; }
+    ul.sublinks a { color:#1d4ed8; text-decoration: none; }
+
     /* Pagination friendliness */
     .row { break-inside: avoid; }
     p, .col-title { orphans: 3; widows: 3; }
@@ -66,6 +72,17 @@
               <td class="col-title">
                 <div><a href="{{ a.url }}">{{ a.title }}</a></div>
                 <div class="url">{{ a.url }}</div>
+
+                {% if a.sublinks and a.sublinks|length %}
+                  <ul class="sublinks">
+                    {% for sl in a.sublinks %}
+                      <li>
+                        <span class="h">{{ sl.heading }}:</span>
+                        <a href="{{ sl.url }}">{{ sl.url }}</a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
               </td>
             </tr>
           {% endfor %}
