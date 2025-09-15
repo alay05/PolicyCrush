@@ -9,36 +9,30 @@
 <body>
   <a href="/" class="home-button">← Home</a>
   <h1>Categories</h1>
-  {% if built_at %}
-    <p><small>Built at: {{ built_at }}</small></p>
-  {% endif %}
 
   {% if categories %}
     {% for label, items in categories.items() %}
-      <div class="source">
+      <div class="source" data-category="{{ label }}">
         <h2>{{ label }}</h2>
-        {% if items %}
-          {% for a in items %}
-            {# hearing = has time in timestamp like YYYY-MM-DDTHH:MM #}
-            {% set is_hearing = 'T' in (a.date or '') %}
 
-            <div class="article" style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
+        <div class="article-list">
+          {% for a in items %}
+            {% set is_hearing = 'T' in (a.date or '') %}
+            <div class="article"
+                data-id="{{ a._ref }}"
+                style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="cursor:grab; padding-right:.5rem; user-select:none; font-size:1.5rem;">☰</div>
+              <div style="flex:1;">
                 <span class="date">{{ a.date | pretty_date(is_hearing) }}</span> -
                 <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
-                {% if a.committee %}<span class="committee">&nbsp;• {{ a.committee }}</span>{% endif %}
-                <span class="origin">&nbsp;• {{ a.source|capitalize }}</span>
               </div>
 
               {% if is_hearing %}
                 <div class="addevent-controls">
-                  <button
-                    type="button"
-                    class="addevent-btn"
-                    data-url="{{ a.url }}"
-                    data-id="{{ a.id }}"
-                    aria-label="Add to calendar via AddEvent"
-                  >
+                  <button type="button"
+                          class="addevent-btn"
+                          data-url="{{ a.url }}"
+                          data-id="{{ a._ref }}">
                     <span class="btn-label">AddEvent</span>
                     <span class="spinner" aria-hidden="true"></span>
                   </button>
@@ -46,10 +40,9 @@
               {% endif %}
             </div>
           {% endfor %}
-        {% else %}
-          <p><em>No items in this category.</em></p>
-        {% endif %}
+        </div>
       </div>
+      <div style="margin-top: 2rem;"></div>
     {% endfor %}
   {% else %}
     <p><em>No categories available.</em></p>
@@ -65,7 +58,13 @@
     </a>
   </div>
 
+  <!-- SortableJS (drag & drop) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js" crossorigin="anonymous"></script>
+
   <script>
+  // =========================
+  // 1) AddEvent click handler
+  // =========================
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.addevent-btn');
     if (!btn) return;
@@ -76,7 +75,6 @@
       return;
     }
 
-    const wrap = btn.closest('.addevent-controls');
     const url = btn.dataset.url;
     if (!url || btn.disabled) return;
 
@@ -96,7 +94,7 @@
       btn.classList.add('done');
       btn.disabled = false; 
       btn.querySelector('.btn-label').textContent = 'Added';
-      btn.dataset.href = "https://app.addevent.com/calendars/GT179952";
+      btn.dataset.href = data.event_url || "https://app.addevent.com/calendars/GT179952";
     } catch (err) {
       btn.classList.remove('loading');
       btn.classList.add('error');
@@ -106,6 +104,71 @@
       console.error(err);
     }
   });
+
+  // ===========================================
+  // 2) Drag & Drop between category lists
+  //    (requires .source[data-category] and
+  //     .article[data-id] which you already have)
+  // ===========================================
+  const lists = Array.from(document.querySelectorAll('.source .article-list'));
+
+  lists.forEach(listEl => {
+    new Sortable(listEl, {
+      group: 'categories',           // allow cross-list moves
+      animation: 150,
+      handle: 'div[style*="cursor:grab"]',
+      ghostClass: 'dragging',
+      filter: 'a, button, .addevent-btn',
+      preventOnFilter: true,
+      onAdd: persistMove,            // moved to a different category
+      onUpdate: persistMove,         // reordered within a category
+    });
+  });
+
+  /**
+   * Persist a move to the backend; rollback on failure.
+   */
+  async function persistMove(evt) {
+    const item = evt.item;                 // moved .article
+    const toList = evt.to;
+    const fromList = evt.from;
+    const toCategory = toList.closest('.source')?.dataset.category || '';
+    const fromCategory = fromList.closest('.source')?.dataset.category || '';
+    const id = item.dataset.id;
+
+    // 0-based index in destination list
+    const newIndex = Array.prototype.indexOf.call(toList.children, item);
+
+    if (!id || !toCategory || newIndex < 0) return;
+
+    try {
+      const res = await fetch("{{ url_for('production.production_move_article') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          from_category: fromCategory,
+          to_category: toCategory,
+          new_index: newIndex
+        })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Move failed");
+      // success: DOM already updated by Sortable
+    } catch (err) {
+      console.error(err);
+      // rollback UI to old position
+      if (fromList && item) {
+        if (evt.oldIndex >= fromList.children.length) {
+          fromList.appendChild(item);
+        } else {
+          fromList.insertBefore(item, fromList.children[evt.oldIndex]);
+        }
+      }
+      alert("Couldn't save that move. Please try again.");
+    }
+  }
   </script>
+
 </body>
 </html>

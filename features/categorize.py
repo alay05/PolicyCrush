@@ -9,7 +9,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
 # Exact labels you gave (spelling & casing matter)
-SPECIAL_CALENDAR = "Calendar (HEARINGS ONLY)"
+SPECIAL_CALENDAR = "Events"
 CATEGORIES = [
     "Congress and the Administration",
     "Health Insurance",
@@ -61,7 +61,7 @@ def _normalize(label: str) -> str:
         "pharma": "Pharmaceuticals and Medical Devices",
         "innovation": "Quality and Innovation",
         "quality": "Quality and Innovation",
-        "medicare/medicaid": "Medicare",   # prefer a specific bucket if model is vague
+        "medicare/medicaid": "Medicare", 
         "congress": "Congress and the Administration",
         "administration": "Congress and the Administration",
         "health insurance": "Health Insurance",
@@ -71,25 +71,44 @@ def _normalize(label: str) -> str:
         return aliases[label.lower()]
     return "Quality and Innovation"
 
+
+def _build_instructions(allowed_labels):
+    return (
+        "Choose ONE category for the article title below.\n\n"
+        "Allowed categories:\n"
+        + "\n".join(f"- {c}" for c in allowed_labels)
+        + "\n\nOutput: EXACT label text only. No extra words."
+    )
+
 def categorize_article(title: str, is_hearing: bool = False) -> str:
     """
     Return a single category label for an article title.
-    Hearings short-circuit into 'Calendar (HEARINGS ONLY)'.
+    ONLY entries with a time (is_hearing=True) may be 'Events'.
     """
+    # If it has a time, force 'Events' and skip the model.
     if is_hearing:
         return SPECIAL_CALENDAR
 
+    # Otherwise, do NOT include 'Events' in the allowed set.
+    allowed = list(CATEGORIES)  # no SPECIAL_CALENDAR here
+    instructions = _build_instructions(allowed)
+
     try:
         resp = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # matching your classify.py choice
+            model="gpt-3.5-turbo",
             temperature=0,
             messages=[
                 SYSTEM_MESSAGE,
-                {"role": "user", "content": f"{USER_INSTRUCTIONS}\n\nTitle: {title}"},
+                {"role": "user", "content": f"{instructions}\n\nTitle: {title}"},
             ],
         )
         raw = resp.choices[0].message.content
-        return _normalize(raw)
+        label = _normalize(raw)
+
+        # Belt-and-suspenders: if the model still says 'Events', override.
+        if label == SPECIAL_CALENDAR:
+            return "Quality and Innovation"
+
+        return label
     except Exception:
-        # Safe fallback
         return "Quality and Innovation"

@@ -4,12 +4,13 @@ import json
 import re
 from weasyprint import HTML
 import hashlib
+from collections import OrderedDict
 
 from production.adapters import fetch_gmail_unread
 from production.adapters import fetch_news_bundle
 from production.adapters import fetch_house_bundle
 from production.adapters import fetch_senate_bundle
-from features.categorize import categorize_article, SPECIAL_CALENDAR
+from features.categorize import categorize_article, SPECIAL_CALENDAR, CATEGORIES
 
 from features.calendar import (
     fetch_hearing_html,
@@ -763,27 +764,101 @@ def production_review():
     _ensure_session_bucket()
     cache = session.get("categories_cache")
 
-    # Redirect only if the "index" key is MISSING (not if present-but-empty)
     if not isinstance(cache, dict) or "index" not in cache:
         return redirect(url_for("production.production_categorize"))
 
     cur = session.get("curation", {})
     index = cache.get("index") or {}
 
+    # Hydrate
     hydrated = {}
     for label, refs in index.items():
         items = []
         for ref in refs or []:
             resolved = _resolve_ref(ref, cur)
             if resolved:
+                if not isinstance(resolved, dict):
+                    resolved = dict(resolved)
+                resolved["_ref"] = ref
                 items.append(resolved)
         hydrated[label] = items
 
+    # ---- Reorder just-in-time (no session changes, no template changes) ----
+    preferred = [SPECIAL_CALENDAR, *CATEGORIES]  # Events first, then your fixed list
+    ordered = OrderedDict((lab, hydrated[lab]) for lab in preferred if lab in hydrated)
+    # append any unexpected categories at the end (robust to future additions)
+    for lab, items in hydrated.items():
+        if lab not in ordered:
+            ordered[lab] = items
+
     return render_template(
         "production_review.html",
-        categories=hydrated,
+        categories=ordered,                    
         built_at=cache.get("built_at"),
     )
+
+
+@production.post("/move-article")
+def production_move_article():
+    """
+    Body: { id: str, from_category: str|None, to_category: str, new_index: int }
+    Mutates session['categories_cache']['index'] so export sees the new order/category.
+    """
+    payload = request.get_json(silent=True) or {}
+    art_id = (payload.get("id") or "").strip()
+    from_cat = payload.get("from_category")
+    to_cat = payload.get("to_category")
+    new_index = payload.get("new_index")
+
+    if not art_id or not to_cat or new_index is None:
+        return jsonify(ok=False, error="Missing id/to_category/new_index"), 400
+
+    _ensure_session_bucket()
+    cache = session.get("categories_cache")
+    if not isinstance(cache, dict) or "index" not in cache:
+        return jsonify(ok=False, error="No category index in session"), 400
+
+    index = cache.get("index") or {}
+    # Ensure destination exists
+    dest_list = index.setdefault(to_cat, [])
+
+    # 1) Find which string we’re storing in `index` for this article.
+    #    Your index stores "refs" (keys used by _resolve_ref). Sometimes `id == ref`,
+    #    but to be safe, try to locate by either:
+    def _remove_first_match():
+        # try exact matches (id == ref)
+        for cat, lst in index.items():
+            for i, ref in enumerate(lst or []):
+                if str(ref) == str(art_id):
+                    return cat, lst.pop(i), i
+        # if your hydrated items use a separate key, add a resolver here
+        return None, None, None
+
+    # Remove from source (if provided), else search globally
+    removed_from, ref_value, old_pos = None, None, None
+    if from_cat in index:
+        lst = index[from_cat] or []
+        for i, ref in enumerate(lst):
+            if str(ref) == str(art_id):
+                removed_from, ref_value, old_pos = from_cat, lst.pop(i), i
+                break
+    if ref_value is None:
+        removed_from, ref_value, old_pos = _remove_first_match()
+
+    if ref_value is None:
+        return jsonify(ok=False, error="Article not found in index"), 404
+
+    # 2) Insert into destination at requested position (clamped)
+    insert_at = max(0, min(int(new_index), len(dest_list)))
+    dest_list.insert(insert_at, ref_value)
+
+    # 3) Persist & optionally bump the built_at to reflect edits
+    cache["index"] = index
+    cache["built_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    session["categories_cache"] = cache
+    session.modified = True
+
+    return jsonify(ok=True)
 
 
 @production.get("/export-categories-pdf")
@@ -804,10 +879,17 @@ def production_export_categories_pdf():
                 items.append(resolved)
         hydrated[label] = items
 
+    # ensure same order as review
+    preferred = [SPECIAL_CALENDAR, *CATEGORIES]
+    ordered = {lab: hydrated[lab] for lab in preferred if lab in hydrated}
+    for lab, items in hydrated.items():
+        if lab not in ordered:
+            ordered[lab] = items
+
     html = render_template(
         "pdf.html",
         generated_at=datetime.now(),
-        categories=hydrated,
+        categories=ordered,          # <— pass in ordered mapping
     )
 
     pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
