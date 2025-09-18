@@ -1,0 +1,94 @@
+<!-- templates/add_event_pull.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>W2W4</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a href="/" class="home-button">← Home</a>
+  <h1>W2W4</h1>
+
+  <form method="POST" action="{{ url_for('add_event_pull.add_event_pull_home') }}"
+        id="add-event-pull-form"
+        style="display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; justify-content:center; margin:1rem 0 1.25rem;">
+    <label for="start_date">Start:</label>
+    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" required>
+    <label for="end_date">End:</label>
+    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" required>
+
+    <button type="submit">Get Events</button>
+  </form>
+
+  {% if error %}
+    <p style="color:#b91c1c; text-align:center; margin:.5rem 0 1rem;">{{ error }}</p>
+  {% endif %}
+
+  {% if grouped and grouped|length %}
+    <div style="text-align:center; margin-bottom: 1rem;">
+      <a class="export-btn"
+         href="{{ url_for('add_event_pull.add_event_pull_export_pdf', start=start_date, end=end_date) }}"
+         style="text-decoration:none;">
+        <button type="button">Export PDF</button>
+      </a>
+    </div>
+
+    {% for day, items in grouped.items() %}
+      <div class="source" data-day="{{ day }}">
+        <h2 style="margin-top:1rem;">{{ day }}</h2>
+
+        <div class="article-list">
+          {% for ev in items %}
+            <div class="article"
+                 data-id="{{ ev.id }}"
+                 style="display:flex; gap:.6rem; align-items:flex-start; justify-content:space-between; padding:.5rem 0; border-bottom:1px solid #e5e7eb;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-weight:600; overflow-wrap:anywhere;">
+                  {% if ev.original_link %}
+                    <a href="{{ ev.original_link }}" target="_blank" class="article-title">{{ ev.title }}</a>
+                  {% else %}
+                    {{ ev.title }}
+                  {% endif %}
+                </div>
+                <div style="color:#6b7280; font-size:.92rem; margin-top:.1rem;">
+                  {% if ev.original_link %}
+                    <span>Link:</span> <a href="{{ ev.original_link }}" target="_blank">{{ ev.original_link }}</a>
+                  {% else %}
+                    <span>No link found in description.</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:.4rem; white-space:nowrap;">
+                <a href="{{ url_for('add_event_pull.add_event_pull_event_ics', event_id=ev.id) }}" title="Download .ics" style="text-decoration:none;">
+                  <button type="button">ICS</button>
+                </a>
+                {% if ev.addevent_url %}
+                  <a href="{{ ev.addevent_url }}" target="_blank" style="text-decoration:none;">
+                    <button type="button" class="btn-secondary">View</button>
+                  </a>
+                {% else %}
+                  <a href="{{ addevent_calendar_href }}" target="_blank" style="text-decoration:none;">
+                    <button type="button" class="btn-secondary">Calendar</button>
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  {% elif pulled is not none and pulled|length == 0 and request.method == "POST" %}
+    <p style="text-align:center; color:#6b7280; margin-top:1rem;">
+      No events found in {{ start_date }} → {{ end_date }}.
+      Try widening the range or check your AddEvent calendar.
+    </p>
+  {% else %}
+    <p style="text-align:center; color:#374151; margin-top:1rem;">
+      Enter a date range and click <em>Get Events</em> to load items from your AddEvent calendar.
+    </p>
+  {% endif %}
+</body>
+</html>

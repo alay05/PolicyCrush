@@ -137,14 +137,11 @@
       return;
     }
 
+    const card = btn.closest('.article');
     const url = btn.dataset.url;
-    if (!url || btn.disabled) return;
-
-    // NEW: grab edited title and identity
-    const card  = btn.closest('.article');
-    const src   = card?.dataset.src || '';
-    const rid   = card?.dataset.rid || '';
-    const title = (card?.querySelector('.article-title')?.textContent || '').trim();
+    const src = card?.dataset.src || "";
+    const rid = card?.dataset.rid || "";
+    const overrideTitle = (card?.querySelector('.article-title')?.textContent || "").trim();
 
     btn.classList.add('loading');
     btn.disabled = true;
@@ -153,15 +150,14 @@
       const res = await fetch("{{ url_for('production.production_addevent') }}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // NEW: include title + source/id so backend can honor overrides
-        body: JSON.stringify({ url, source: src, id: rid, title })
+        body: JSON.stringify({ url, source: src, id: rid, override_title: overrideTitle })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Failed to create event");
 
       btn.classList.remove('loading', 'error');
       btn.classList.add('done');
-      btn.disabled = false; 
+      btn.disabled = false;
       btn.querySelector('.btn-label').textContent = 'Added';
       btn.dataset.href = data.event_url || "https://app.addevent.com/calendars/GT179952";
     } catch (err) {

@@ -1004,82 +1004,80 @@ def production_sublink_remove():
 
 @production.post("/addevent")
 def production_addevent():
-    """Create an AddEvent calendar entry for a hearing URL, honoring title overrides when available."""
+    """Create an AddEvent calendar entry for a hearing URL, idempotent by URL+start."""
     payload = request.get_json(silent=True) or {}
     url = (payload.get("url") or "").strip()
     tz = payload.get("timezone") or "America/New_York"
     default_minutes = int(payload.get("duration_minutes") or 60)
 
-    # Optional hints (won't be required; we can infer from URL)
-    title_hint = (payload.get("title") or "").strip()
-    src_hint = (payload.get("source") or "").strip()
-    rid_hint = (payload.get("id") or "").strip()
+    # These let us use the edited title, if present
+    src = (payload.get("source") or "").strip()
+    rid = (payload.get("id") or "").strip()
+    override_title = (payload.get("override_title") or "").strip()
 
     if not url:
         return jsonify({"ok": False, "error": "Missing 'url'."}), 400
 
-    # Try to resolve a title override from session
-    override_title = None
     try:
-        overrides = session.get("title_overrides") or {}
-
-        # 1) If source/id are provided (optional), try that key first
-        if src_hint and rid_hint:
-            override_title = overrides.get(f"{src_hint}:{rid_hint}")
-
-        # 2) If not found yet, try to infer the (source, id) by matching URL
-        if not override_title:
-            cur = session.get("curation", {}) or {}
-
-            # Gmail manual entries live in session
-            for g in cur.get("gmail") or []:
-                if (g.get("url") or "").strip() == url:
-                    override_title = overrides.get(f"gmail:{g.get('id')}")
-                    if override_title:
-                        break
-
-            # News/House/Senate live in the in-memory stores
-            if not override_title:
-                for src_name, store in (("news", NEWS_STORE), ("house", HOUSE_STORE), ("senate", SENATE_STORE)):
-                    for item_id, item in store.items():
-                        if (item.get("url") or "").strip() == url:
-                            override_title = overrides.get(f"{src_name}:{item_id}")
-                            if override_title:
-                                break
-                    if override_title:
-                        break
-    except Exception:
-        # Non-fatal: just ignore and fallback
-        override_title = None
-
-    try:
-        # 1) scrape + extract canonical event fields
+        # 1) scrape + extract
         page_text = fetch_hearing_html(url)
         info_raw = extract_event_info(page_text)  # JSON string from your model
         info = json.loads(info_raw)
 
-        # 2) combine date + time  (expect "YYYY-MM-DD" and "HH:MM")
+        # 2) combine date + time
         dt_start = datetime.strptime(f"{info['date']} {info['time']}", "%Y-%m-%d %H:%M")
         dt_end = dt_start + timedelta(minutes=default_minutes)
 
-        # 3) choose best title: override > title_hint from client > scraped
-        base_title = info.get("title") or ""
-        final_title = (override_title or title_hint or base_title).strip()
+        # 3) pick the best title: edited > session override > extracted
+        effective_title = (override_title or "").strip()
 
-        # 4) build AddEvent payload (unchanged fields preserved)
+        if not effective_title and src and rid:
+            # honor server-side rename overrides saved earlier
+            overrides = session.get("title_overrides") or {}
+            key = f"{src}:{rid}"
+            if key in overrides:
+                effective_title = (overrides[key] or "").strip()
+
+        if not effective_title:
+            effective_title = info.get("title") or ""
+
+        # 4) local idempotency guard (per-session)
+        #    key on URL + exact start minute so retries/double-clicks don't duplicate
+        idem_key_src = f"{url}|{dt_start.isoformat(timespec='minutes')}"
+        idem_key = hashlib.sha1(idem_key_src.encode("utf-8")).hexdigest()
+
+        idx = session.get("addevent_index") or {}
+        if idem_key in idx:
+            # We've already created this event in this session; return the same one
+            existing = idx[idem_key]
+            return jsonify({
+                "ok": True,
+                "event_id": existing.get("event_id"),
+                "event_url": existing.get("event_url"),
+                "duplicate": True
+            })
+
+        # 5) build AddEvent payload (keep your prefix behavior if desired)
         addevent_data = {
-            "title": "[AUTO-TEST]" + final_title,
+            "title": "[AUTO-TEST]" + effective_title,   # preserve your prefix
             "datetime_start": dt_start.strftime("%Y-%m-%d %H:%M"),
             "datetime_end": dt_end.strftime("%Y-%m-%d %H:%M"),
             "location": info.get("location") or "",
-            "description": url,               # keep the source link
-            "timezone": tz,                   # e.g., America/New_York
+            "description": url,                         # keep the source link for traceability
+            "timezone": tz,
         }
 
-        # 5) create event
+        # 6) create event
         res = create_event_addevent(addevent_data)
+
+        # 7) normalize response fields
         event_id = res.get("id") or res.get("event", {}).get("id")
         event_url = res.get("url") or res.get("event", {}).get("url") or res.get("link")
+
+        # 8) store in session so subsequent calls are deduped during this session
+        idx[idem_key] = {"event_id": event_id, "event_url": event_url}
+        session["addevent_index"] = idx
+        session.modified = True
 
         return jsonify({"ok": True, "event_id": event_id, "event_url": event_url})
     except Exception as e:
