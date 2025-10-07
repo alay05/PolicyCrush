@@ -28,11 +28,21 @@
 
   {% if grouped and grouped|length %}
     <div style="text-align:center; margin-bottom: 1rem;">
-      <a class="export-btn"
-         href="{{ url_for('add_event_pull.add_event_pull_export_pdf', start=start_date, end=end_date) }}"
-         style="text-decoration:none;">
-        <button type="button">Export PDF</button>
-      </a>
+      <form method="POST" action="{{ url_for('add_event_pull.add_event_pull_build_categories') }}"
+      style="display:inline; margin-left:.5rem;">
+        <!-- keep the range so the build route can re-pull if session is empty -->
+        <input type="hidden" name="start" value="{{ start_date }}">
+        <input type="hidden" name="end"   value="{{ end_date }}">
+        <button type="submit" class="btn-primary">
+          {% if categorize_ready %}Rebuild Categories{% else %}Build Categories →{% endif %}
+        </button>
+      </form>
+
+      {% if categorize_ready %}
+        <a href="{{ url_for('add_event_pull.add_event_categories_review') }}" style="text-decoration:none; margin-left:.5rem;">
+          <button type="button">View Categories</button>
+        </a>
+      {% endif %}
     </div>
 
     {% for day, items in grouped.items() %}

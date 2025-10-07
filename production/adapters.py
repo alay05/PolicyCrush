@@ -83,6 +83,29 @@ NEWS = {
     "White House": fetch_whitehouse_articles,
 }
 
+def _shift_back_one_day(d):
+    try:
+        if isinstance(d, datetime.datetime):
+            return d - datetime.timedelta(days=1)
+        if isinstance(d, datetime.date):
+            return d - datetime.timedelta(days=1)
+        if isinstance(d, str) and d:
+            # try ISO first
+            try:
+                dt = datetime.datetime.fromisoformat(d.replace("Z", "+00:00"))
+                newdatetime = dt - datetime.timedelta(days=1)
+                # preserve datetime vs date-like string
+                if "T" in d or ":" in d:
+                    return newdatetime.isoformat()
+                return newdatetime.date().isoformat()
+            except ValueError:
+                # fallback: YYYY-MM-DD
+                dt = datetime.datetime.strptime(d, "%Y-%m-%d")
+                return (dt.date() - datetime.timedelta(days=1)).isoformat()
+    except Exception:
+        pass
+    return d
+
 def _aid(url: str, source: str) -> str:
     return hashlib.sha1(f"{source}|{url}".encode("utf-8")).hexdigest()[:16]
 
@@ -93,11 +116,14 @@ def fetch_news_bundle(start_date: datetime.date, use_openai: bool = False):
             payload = fetch(start_date)
             items = []
             for art in payload.get("articles", []):
+                date_val = art.get("date", "")
+                if name == "Congress" and date_val:               
+                    date_val = _shift_back_one_day(date_val)
                 item = {
                     "id": _aid(art["url"], name),
                     "title": art["title"],
                     "url": art["url"],
-                    "date": art.get("date", ""),
+                    "date": date_val,
                     "source": name,
                 }
                 if "suggestion" in art and art["suggestion"]:

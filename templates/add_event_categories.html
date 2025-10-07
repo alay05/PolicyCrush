@@ -1,0 +1,115 @@
+<!-- templates/add_event_categories.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AddEvent - Categories</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- Top-left goes HOME -->
+  <a href="/" class="home-button">← Home</a>
+  <h1>AddEvent Categories</h1>
+  {% if built_at %}
+    <p><small>Built: {{ built_at }}</small></p>
+  {% endif %}
+
+  {% if categories %}
+    {% for label, items in categories.items() %}
+      <div class="source" data-category="{{ label }}">
+        <h2>{{ label }}</h2>
+
+        <div class="article-list">
+          {% for a in items %}
+            <div class="article"
+                 data-id="{{ a._ref }}"
+                 style="display:flex; justify-content:space-between; align-items:center; gap:.6rem; padding:.35rem 0; border-bottom:1px solid #e5e7eb;">
+              <div style="cursor:grab; padding-right:.5rem; user-select:none; font-size:1.5rem;">☰</div>
+
+              <div style="flex:1; min-width:0; overflow-wrap:anywhere;">
+                {% if a.date %}<span class="date">{{ a.date }}</span> - {% endif %}
+                {% if a.url %}
+                  <a href="{{ a.url }}" target="_blank" class="article-title">{{ a.title }}</a>
+                {% else %}
+                  {{ a.title }}
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="margin-top: 1.5rem;"></div>
+    {% endfor %}
+  {% else %}
+    <p><em>No categories available.</em></p>
+  {% endif %}
+
+  <!-- Bottom button row like your other pages -->
+  <div style="text-align:center; margin-top: 1.25rem;">
+    <a href="{{ url_for('add_event_pull.add_event_pull_home') }}" style="text-decoration:none;">
+      <button type="button">← Back to Range</button>
+    </a>
+
+    {% if last_range and last_range.get('start') and last_range.get('end') %}
+      <a class="export-btn"
+         href="{{ url_for('add_event_pull.add_event_pull_export_pdf',
+                          start=last_range.get('start'),
+                          end=last_range.get('end')) }}"
+         style="text-decoration:none; margin-left:.5rem;">
+        <button type="button">Export PDF</button>
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- SortableJS (drag & drop) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js" crossorigin="anonymous"></script>
+  <script>
+    const lists = Array.from(document.querySelectorAll('.source .article-list'));
+    lists.forEach(listEl => {
+      new Sortable(listEl, {
+        group: 'categories',
+        animation: 150,
+        handle: 'div[style*="cursor:grab"]',
+        ghostClass: 'dragging',
+        onAdd: persistMove,
+        onUpdate: persistMove,
+      });
+    });
+
+    async function persistMove(evt) {
+      const item = evt.item;
+      const toList = evt.to;
+      const fromList = evt.from;
+      const toCategory = toList.closest('.source')?.dataset.category || '';
+      const fromCategory = fromList.closest('.source')?.dataset.category || '';
+      const id = item.dataset.id;
+      const newIndex = Array.prototype.indexOf.call(toList.children, item);
+      if (!id || !toCategory || newIndex < 0) return;
+
+      try {
+        const res = await fetch("{{ url_for('add_event_pull.add_event_pull_move_article') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            from_category: fromCategory,
+            to_category: toCategory,
+            new_index: newIndex
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Move failed");
+      } catch (err) {
+        console.error(err);
+        // revert
+        if (fromList && item) {
+          if (evt.oldIndex >= fromList.children.length) fromList.appendChild(item);
+          else fromList.insertBefore(item, fromList.children[evt.oldIndex]);
+        }
+        alert("Couldn't save that move. Please try again.");
+      }
+    }
+  </script>
+</body>
+</html>
