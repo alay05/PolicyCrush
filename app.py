@@ -12,6 +12,7 @@ from production.routes import production
 from features.pretty_date import pretty_date
 
 app = Flask(__name__)
+app.secret_key = "CHANGE_ME_TO_RANDOM_STRING"
 
 app.register_blueprint(gmail)
 app.register_blueprint(news)
