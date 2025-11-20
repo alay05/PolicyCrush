@@ -147,10 +147,10 @@ def categories_to_pdf(filename, categories, title=None, generated_at=None):
         # ---------- CREATE TABLE ----------
 
         table = Table(
-            table_data,
-            colWidths=[1.7 * inch, 5.45 * inch],   # FIXED
-            hAlign="LEFT",
-        )
+          table_data,
+          colWidths=[1.7 * inch, 5.45 * inch],   # FIXED
+          hAlign="LEFT",
+      )
 
         table.setStyle(TableStyle([
             # Header
