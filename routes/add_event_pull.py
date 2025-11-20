@@ -3,9 +3,11 @@ from __future__ import annotations
 
 from datetime import datetime, date
 from io import BytesIO
+import os
 
 from flask import Blueprint, render_template, request, send_file, url_for, redirect, abort, make_response, session, jsonify
 from features.categorize import categorize_article, CATEGORIES
+from features.pdf_export import categories_to_pdf
 from collections import OrderedDict
 import hashlib, json
 
@@ -95,7 +97,6 @@ def add_event_pull_home():
 
 @add_event_pull.route("/add-event-pull/export", methods=["GET"])
 def add_event_pull_export_pdf():
-    # Require built categories that match current pulled set
     cache = session.get("addevent_categories_cache") or {}
     events_min = session.get("addevent_pulled") or []
     if not cache.get("index") or not events_min:
@@ -103,33 +104,21 @@ def add_event_pull_export_pdf():
     if cache.get("sig") != _event_signature(events_min):
         return redirect(url_for("add_event_pull.add_event_categories_review"))
 
-    # Use last pulled range (or explicit query args) to re-pull full event objects
     last_range = session.get("addevent_last_range") or {}
     start_str = request.args.get("start") or last_range.get("start")
     end_str   = request.args.get("end")   or last_range.get("end")
-    if not (start_str and end_str):
-        return redirect(url_for("add_event_pull.add_event_categories_review"))
 
     start = _parse_date(start_str)
     end   = _parse_date(end_str)
-    if not start or not end or end < start:
-        abort(400, "Invalid date range")
+    if not (start and end and end >= start):
+        abort(400)
 
-    # Re-pull full events so PDF has full fields (starts_at_dt, original_link, etc.)
     events_full = search_events_between(start, end, calendar_key=DEFAULT_CALENDAR_KEY) or []
-    by_id = {str((e.get("id") if isinstance(e, dict) else getattr(e, "id", ""))): e for e in events_full}
+    by_id = {str(e.get("id") if isinstance(e, dict) else getattr(e, "id", "")): e for e in events_full}
 
-    # Build ordered categories from cache index -> list of full event objs
     index = cache.get("index") or {}
     preferred = [*CATEGORIES]
     ordered = OrderedDict()
-
-    # helper to get printable dt inside template
-    def _attach_dt(ev):
-        # ensure attribute access works in Jinja either way
-        if isinstance(ev, dict):
-            return ev
-        return ev  # Jinja handles attr/item lookup; no change needed
 
     for lab in preferred:
         if lab in index:
@@ -137,52 +126,36 @@ def add_event_pull_export_pdf():
             for ref in index[lab] or []:
                 ev = by_id.get(str(ref))
                 if ev:
-                    items.append(_attach_dt(ev))
+                    items.append(ev)
             if items:
                 ordered[lab] = items
 
-    # append any unexpected categories
     for lab, refs in index.items():
-        if lab in ordered:
-            continue
-        items = []
-        for ref in refs or []:
-            ev = by_id.get(str(ref))
-            if ev:
-                items.append(_attach_dt(ev))
-        if items:
-            ordered[lab] = items
+        if lab not in ordered:
+            items = []
+            for ref in refs or []:
+                ev = by_id.get(str(ref))
+                if ev:
+                    items.append(ev)
+            if items:
+                ordered[lab] = items
 
     if not ordered:
-        # nothing matched the current range; bounce to review
         return redirect(url_for("add_event_pull.add_event_categories_review"))
 
-    # Render HTML (category-grouped) then to PDF
-    html = render_template(
-        "pdf.html",
-        title="AddEvent Categories",
+    # Output path
+    fname = f"addevent-categories-{start.strftime('%m_%d')}to{end.strftime('%m_%d')}.pdf"
+    outpath = f"static/exports/{fname}"
+    os.makedirs("static/exports", exist_ok=True)
+
+    categories_to_pdf(
+        filename=outpath,
         categories=ordered,
-        generated_at=datetime.now(),
-        include_ics=True,
+        title="AddEvent Categories",
+        generated_at=datetime.now()
     )
 
-    try:
-        from weasyprint import HTML  # type: ignore
-        pdf_bytes = HTML(string=html, base_url=request.host_url).write_pdf()
-        fname = f"addevent-categories-{start.strftime('%m_%d')}to{end.strftime('%m_%d')}.pdf"
-        return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name=fname)
-    except Exception:
-        pass
-    try:
-        import pdfkit  # type: ignore
-        pdf_bytes = pdfkit.from_string(html, False)
-        fname = f"addevent-categories-{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}.pdf"
-        return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name=fname)
-    except Exception:
-        resp = make_response(html)
-        resp.headers["Content-Type"] = "text/html; charset=utf-8"
-        return resp
-
+    return send_file(outpath, as_attachment=True)
 
 @add_event_pull.route("/add-event-pull/ics/<event_id>.ics", methods=["GET"])
 def add_event_pull_event_ics(event_id: str):

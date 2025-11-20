@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, session, redirect, url_for, make_response, jsonify
+from flask import Blueprint, render_template, request, session, redirect, url_for, make_response, jsonify, send_file
 from datetime import datetime, timedelta
+import os
 import json
 import re
-from weasyprint import HTML
 import hashlib
 from collections import OrderedDict
 
@@ -11,6 +11,7 @@ from production.adapters import fetch_news_bundle
 from production.adapters import fetch_house_bundle
 from production.adapters import fetch_senate_bundle
 from features.categorize import categorize_article, SPECIAL_CALENDAR, CATEGORIES
+from features.pdf_export import categories_to_pdf
 
 from features.calendar import (
     fetch_hearing_html,
@@ -906,10 +907,9 @@ def production_export_categories_pdf():
         return redirect(url_for("production.production_categorize"))
 
     cur = session.get("curation", {})
-    overrides    = session.get("title_overrides") or {}   # renamed titles
-    sublinks_map = session.get("sublinks") or {}          # { "source:id": [ {heading,url}, ... ] }
+    overrides    = session.get("title_overrides") or {}
+    sublinks_map = session.get("sublinks") or {}
 
-    # Hydrate with overrides + sublinks
     hydrated = {}
     for label, refs in index.items():
         items = []
@@ -918,7 +918,7 @@ def production_export_categories_pdf():
             if not resolved:
                 continue
 
-            item = dict(resolved) if isinstance(resolved, dict) else dict(resolved)
+            item = dict(resolved)
             src = (ref or {}).get("source")
             rid = item.get("id")
             if src and rid:
@@ -929,26 +929,25 @@ def production_export_categories_pdf():
             items.append(item)
         hydrated[label] = items
 
-    # ---- Order categories: Events first, then fixed list; append any extras
     preferred = [SPECIAL_CALENDAR, *CATEGORIES]
     ordered = OrderedDict((lab, hydrated.get(lab, [])) for lab in preferred if lab in hydrated)
     for lab, items in hydrated.items():
         if lab not in ordered:
             ordered[lab] = items
 
-    html = render_template(
-        "pdf.html",
-        generated_at=datetime.now(),
-        categories=ordered,   # pass ordered mapping to the template
+    # Create PDF file
+    stamp = datetime.now().strftime("%m_%d")
+    outpath = f"static/exports/PolicyCrush_Categories_{stamp}.pdf"
+    os.makedirs("static/exports", exist_ok=True)
+
+    categories_to_pdf(
+        filename=outpath,
+        categories=ordered,
+        title="PolicyCrush Categories",
+        generated_at=datetime.now()
     )
 
-    pdf_bytes = HTML(string=html, base_url=request.root_url).write_pdf()
-    stamp = datetime.now().strftime("%m/%d")
-    resp = make_response(pdf_bytes)
-    resp.headers["Content-Type"] = "application/pdf"
-    resp.headers["Content-Disposition"] = f'attachment; filename="PolicyCrush_Categories_{stamp}.pdf"'
-    return resp
-
+    return send_file(outpath, as_attachment=True)
 
 @production.post("/sublink/add")
 def production_sublink_add():
